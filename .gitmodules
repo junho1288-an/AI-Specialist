@@ -1,0 +1,3 @@
+[submodule "llm_hands_on"]
+	path = llm_hands_on
+	url = https://github.com/heury/llm_hands_on.git

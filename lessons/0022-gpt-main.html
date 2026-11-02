@@ -1,0 +1,63 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Chapter 4 · 셀 6 · 설정하고 생성 결과 확인하기</title><link rel="stylesheet" href="../assets/lesson.css"><link rel="stylesheet" href="../assets/practice.css"><script src="../assets/practice.js" defer></script><script src="../assets/gpt-generation-demo.js" defer></script></head><body class="course"><header class="hero"><span class="badge">CHAPTER 4 / 전체 셀 6 / 설명 7분 + 연습 10분</span><h1>셀 6 · 설정하고 생성 결과 확인하기</h1><p class="lead">config·eval·encode·배치 축·generate·decode 연결</p><p class="muted">셀 번호는 파일 위에서부터 센 순서입니다. 자체 연습 문제이며 실제 출제 범위는 강사 공지를 따릅니다.</p></header><nav><a href="chapter-4.html">Chapter 4 목차</a><a href="0021-gpt-generate.html">이전</a><a href="#exam">확인 문제</a><a href="../reference/chapter-4-gpt.html">복습 카드</a></nav><div class="controls"><button id="exam-toggle" class="action" type="button" aria-pressed="false">설명 가리고 시험 보기</button></div><main><div class="reading"><h2>1. 마지막 실행 흐름</h2><div class="flow"><div class="flow-box"><b>설정 + GPTModel</b>무작위 초기화</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>문장 encode</b>ID 리스트</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>unsqueeze(0)</b>(1,T) 입력</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>생성 + decode</b>새 ID와 문자열</div></div><p><strong>예시:</strong> 교안 저장 출력에서 “Hello, I am”은 ID 4개입니다. 여기에 토큰 10개를 생성하므로 최종 길이는 14입니다. 영어 단어 10개나 글자 10개를 추가한다는 뜻이 아닙니다.</p><h2>2. config 읽기</h2><table><thead><tr><th>키</th><th>교안 값</th><th>의미</th></tr></thead><tbody><tr><td>vocab_size</td><td>50257</td><td>GPT-2 인코딩 어휘 크기</td></tr><tr><td>context_length</td><td>1024</td><td>모델이 한 번에 참고할 최대 토큰 길이</td></tr><tr><td>emb_dim</td><td>768</td><td>토큰 벡터 크기</td></tr><tr><td>n_heads</td><td>12</td><td>Attention 헤드 수, 헤드당 64차원</td></tr><tr><td>n_layers</td><td>12</td><td>TransformerBlock 개수</td></tr><tr><td>drop_rate</td><td>0.1</td><td>dropout 확률</td></tr><tr><td>qkv_bias</td><td>False</td><td>Q·K·V Linear 편향 사용 안 함</td></tr></tbody></table>
+<h2>3. 배치 축을 넣고 빼기</h2><pre><code>encoded = tokenizer.encode(start_context)  # 리스트
+encoded_tensor = torch.tensor(encoded).unsqueeze(0)  # (T,) → (1,T)
+out = generate_text_simple(model, encoded_tensor, 10, context_length)
+decoded_text = tokenizer.decode(out.squeeze(0).tolist())</code></pre><p>모델은 (배치, 길이)를 받으므로 문장 하나에도 배치 축이 필요합니다. 생성 후 squeeze(0)로 크기 1인 배치 축을 없애고 tolist()로 decode가 받을 ID 리스트를 만듭니다.</p>
+<div class="callout"><strong>GPTModel(config)는 학습된 GPT-2 로딩이 아닙니다.</strong><p>이 노트북에는 사전학습 가중치를 불러오거나 optimizer로 학습하는 과정이 없습니다. tokenizer는 준비된 것을 사용하지만 모델 가중치는 무작위입니다. 따라서 저장 출력처럼 어색한 문장이 나오는 것은 예상 가능한 결과입니다.</p></div><p>이 셀은 “GPT_CONFIG_124M”이라는 이름으로 GPT-2 Small 형태의 설정을 사용합니다. 이름만으로 실제 파라미터 수나 사전학습 완료를 보장하지 않습니다. 이 구현은 입력 임베딩과 출력 가중치를 공유하지 않으므로 가중치를 공유하는 구현과 파라미터 수가 다를 수 있습니다.</p><p><code>torch.manual_seed(123)</code>은 같은 조건에서 초기화 재현을 돕습니다. <code>model.eval()</code>은 dropout을 끕니다. 이것들이 학습을 수행하거나 문장을 유창하게 만드는 것은 아닙니다.</p><h2>4. 작은 모델부터 확인하기</h2><p>전체 설정은 메모리와 실행 시간이 더 필요하므로 아래 과제는 작은 설정을 사용합니다. 어휘 크기를 줄인 모델에는 실제 GPT-2 토큰 ID를 그대로 넣지 말고 범위 내의 연습용 ID를 넣으세요.</p><details><summary>시도 후 셀 6 전체 완성 코드 보기</summary><pre data-source-cell="6"><code>def main():
+    GPT_CONFIG_124M = {
+        &quot;vocab_size&quot;: 50257,     # 단어 집합 크기
+        &quot;context_length&quot;: 1024,  # 최대 문맥 길이
+        &quot;emb_dim&quot;: 768,          # 임베딩 차원
+        &quot;n_heads&quot;: 12,           # 어텐션 헤드 수
+        &quot;n_layers&quot;: 12,          # 레이어 수
+        &quot;drop_rate&quot;: 0.1,        # 드롭아웃 비율
+        &quot;qkv_bias&quot;: False        # Q,K,V 편향 사용 여부
+    }
+
+    torch.manual_seed(123)
+
+    model = GPTModel(GPT_CONFIG_124M)
+    model.eval()
+
+    start_context = &quot;Hello, I am&quot;
+
+    tokenizer = tiktoken.get_encoding(&quot;gpt2&quot;)
+    encoded = tokenizer.encode(start_context)
+    encoded_tensor = torch.tensor(encoded).unsqueeze(0) # 배치 차원 추가
+
+    print(f&quot;\n{50*'='}\n{22*' '}IN\n{50*'='}&quot;)
+    print(&quot;\nInput text:&quot;, start_context)
+    print(&quot;Encoded input text:&quot;, encoded)
+    print(&quot;encoded_tensor.shape:&quot;, encoded_tensor.shape)
+
+    out = generate_text_simple(
+        model=model,
+        idx=encoded_tensor,
+        max_new_tokens=10,  # 10개의 새로운 토큰 생성
+        context_size=GPT_CONFIG_124M[&quot;context_length&quot;]
+    )
+
+    decoded_text = tokenizer.decode(out.squeeze(0).tolist())
+
+    print(f&quot;\n\n{50*'='}\n{22*' '}OUT\n{50*'='}&quot;)
+    print(&quot;\nOutput:&quot;, out)
+    print(&quot;Output length:&quot;, len(out[0]))
+    print(&quot;Output text:&quot;, decoded_text)
+
+if __name__ == &quot;__main__&quot;:
+    main()</code></pre><p>원본 실행 코드에 정답을 채우고 주석을 줄였습니다. 이전 셀 정의에 의존하므로 위에서 아래로 실행하세요. 원본 노트북은 변경하지 않았습니다. 이 큰 main을 실행하는 대신 처음에는 아래 작은 모델 과제로 확인할 수 있습니다.</p></details></div><section id="exam"><h2>기억해서 풀어 보기</h2><p>1~5번 자동 확인, 6번 설명 비교, 7번 직접 코딩입니다. 브라우저는 Python을 실행하지 않고 답을 저장·전송하지 않습니다.</p><noscript>JavaScript가 꺼져 있으면 정답·해설을 열어 비교하세요.</noscript><article class="quiz"><h3>01 · 배치 축 추가</h3><pre><code>encoded_tensor = torch.tensor(encoded).????(0)</code></pre><form data-answer="unsqueeze" data-explanation="예: (4,)를 (1,4)로 바꿉니다."><label for="q1">답 입력</label><input id="q1" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>unsqueeze</strong>. 예: (4,)를 (1,4)로 바꿉니다.</p></details></article><article class="quiz"><h3>02 · 배치 축 제거</h3><pre><code>out.????(0).tolist()</code></pre><form data-answer="squeeze" data-explanation="배치 크기가 1일 때 (1,T)를 (T,)로 바꿉니다."><label for="q2">답 입력</label><input id="q2" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>squeeze</strong>. 배치 크기가 1일 때 (1,T)를 (T,)로 바꿉니다.</p></details></article><article class="quiz"><h3>03 · 최종 길이</h3><p>초기 토큰 4개에 새 토큰 10개를 생성하면 전체 토큰 수는?</p><form data-answer="14" data-explanation="이 함수는 초기 ID를 유지하고 10개를 붙입니다."><label for="q3">답 입력</label><input id="q3" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>14</strong>. 이 함수는 초기 ID를 유지하고 10개를 붙입니다.</p></details></article><article class="quiz"><h3>04 · 평가 모드</h3><pre><code>model.????()  # dropout 비활성화</code></pre><form data-answer="eval" data-explanation="eval은 dropout을 비활성화하지만 무작위 가중치를 학습하지 않습니다."><label for="q4">답 입력</label><input id="q4" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>eval</strong>. eval은 dropout을 비활성화하지만 무작위 가중치를 학습하지 않습니다.</p></details></article><article class="quiz"><h3>05 · 사전학습 여부</h3><p>“GPT_CONFIG_124M으로 GPTModel을 만들면 학습된 GPT-2 가중치가 자동 다운로드된다.”</p><form data-answer="X" data-explanation="이 코드에는 학습된 가중치를 로드하는 동작이 없습니다."><label><input type="radio" name="answer" value="O"> O</label><label><input type="radio" name="answer" value="X"> X</label><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>X</strong>. 이 코드에는 학습된 가중치를 로드하는 동작이 없습니다.</p></details></article><article class="quiz"><h3>06 · 내 말로 설명</h3><p>어색한 출력이 반드시 버그는 아닌 이유와 tokenizer와 모델의 준비 상태를 설명하세요.</p><label for="q6">나의 설명</label><textarea id="q6" placeholder="내 말로 먼저 설명해 보세요."></textarea><details><summary>작성 후 비교할 해설</summary><p>tokenizer는 이미 정해진 규칙을 쓰지만 GPTModel의 가중치는 처음 초기화한 상태입니다. 예: ID로 변환·생성·복원이 동작해도 자연스러운 문장 생성 능력은 별도 학습이 필요합니다.</p></details></article><article class="quiz"><h3>07 · 빈 노트북 실기</h3><p>제출: <code>practice/day-01/tiny-gpt-main.ipynb</code>. 파일은 직접 만드세요. 예상 5~10분. 필요한 앞 셀의 클래스를 같은 노트북에서 먼저 정의합니다.</p><p>작은 config의 모델로 토큰 2개를 생성하고 eval과 no_grad의 역할을 확인하세요.</p><details><summary>시도 후 확인 코드</summary><pre><code>tiny_cfg = {
+    &quot;vocab_size&quot;: 32, &quot;context_length&quot;: 8, &quot;emb_dim&quot;: 8,
+    &quot;n_heads&quot;: 2, &quot;n_layers&quot;: 2, &quot;drop_rate&quot;: 0.0, &quot;qkv_bias&quot;: False
+}
+model = GPTModel(tiny_cfg)
+assert model.training
+model.eval()
+assert not model.training
+idx = torch.tensor([1,2,3]).unsqueeze(0)
+with torch.no_grad():
+    logits = model(idx)
+assert not logits.requires_grad
+out = generate_text_simple(model, idx, 2, context_size=8)
+assert tuple(out.shape) == (1, 5)
+ids = out.squeeze(0).tolist()
+assert isinstance(ids, list) and len(ids) == 5</code></pre><p>이 작은 어휘 ID에는 GPT-2 decode를 적용해 문장 품질을 판단하지 않습니다. 연습의 목표는 실행 흐름과 shape입니다.</p></details><p>완료 기준: 새 커널 전체 실행, 검사 통과, 핵심 코드 이유 설명. 도움받았다면 기록하고 다음날 자료 없이 재작성합니다.</p></article><div class="controls"><button id="quiz-reset" class="action" type="button">자동 확인 문제 다시 풀기</button></div><p>자동 확인 입력만 초기화하며 설명 메모는 유지합니다.</p></section><footer><p>코드나 이해되지 않는 부분을 에이전트에게 보내 주세요. 다음날 핵심 코드를 자료 없이 다시 작성해 봅니다.</p><p><a href="0021-gpt-generate.html">이전</a> · <a href="0023-gpt-review.html">다음</a> · <a href="../class-notes/day-01.md">오늘 노트</a></p><p class="source">교안: <a href="../llm_hands_on/Chapter_4_Excercise_GPT.ipynb">셀 6</a>. 추천 1차 자료: <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html">PyTorch 공식 API</a>. GELU 보충: <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.GELU.html">공식 GELU</a>. 이전 개념: <a href="0009-attention-qkv.html">Q·K·V 수업</a>.</p></footer></main></body></html>

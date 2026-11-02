@@ -1,0 +1,13 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Chapter 3 Attention 복습 카드</title><link rel="stylesheet" href="../assets/lesson.css"><link rel="stylesheet" href="../assets/practice.css"></head><body><p class="eyebrow">CHAPTER 3 / 시도 후 확인</p><h1>미래 가리기와 여러 헤드</h1><h2>단일 헤드</h2><pre><code>keys = self.W_key(x)
+queries = self.W_query(x)
+values = self.W_value(x)
+scores = queries @ keys.transpose(1, 2)
+scores.masked_fill_(self.mask.bool()[:T, :T], -torch.inf)
+weights = torch.softmax(scores / keys.shape[-1]**0.5, dim=-1)
+weights = self.dropout(weights)
+context = weights @ values</code></pre><p>입력 (B,T,d_in) → Q·K·V (B,T,d_out) → scores·weights (B,T,T) → context (B,T,d_out). 예: (2,6,3) → (2,6,2). 마스크는 자기 위치까지 허용하고 미래만 차단한다. 합이 1인 가중치는 dropout 전을 말한다.</p><h2>두 Multi-Head 구현 비교</h2><table><thead><tr><th>구현</th><th>d_out</th><th>출력</th></tr></thead><tbody><tr><td>Wrapper</td><td>헤드 하나의 차원</td><td>(B,T,H×d_out)</td></tr><tr><td>통합 구현</td><td>전체 출력 차원</td><td>(B,T,d_out)</td></tr></tbody></table><p>예: Wrapper(d_out=2,H=2)는 4차원, 통합(d_out=2,H=2)은 헤드당 1차원·전체 2차원이다. 원본 셀 4의 저장 출력 4는 현재 코드와 맞지 않는다.</p><pre><code># 통합 구현: D는 전체 d_out, h는 D // H
+(B,T,D) → view(B,T,H,h) → transpose → (B,H,T,h)
+scores = Q @ K.transpose(2,3)       # (B,H,T,T)
+context = weights @ V              # (B,H,T,h)
+context.transpose(1,2).contiguous().view(B,T,D)
+# 마지막 out_proj도 (B,T,D)를 유지</code></pre><p>ModuleList는 헤드 모듈 등록, cat은 마지막 축 연결, contiguous는 transpose 후 view를 위한 메모리 배치 준비다. 마스크는 register_buffer로 등록되며 학습 파라미터가 아니다.</p><p>코드 조각의 T, B, H, D, h는 shape를 설명하는 기호다. 실제 전체 코드는 각 수업을 참고한다.</p><p><a href="../lessons/chapter-3.html">셀별 수업 목차</a> · <a href="../lessons/0009-attention-qkv.html">Q·K·V 예시</a> · <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.ModuleList.html">PyTorch ModuleList</a></p></body></html>

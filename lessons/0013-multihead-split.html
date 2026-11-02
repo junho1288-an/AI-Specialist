@@ -1,0 +1,93 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Chapter 3 · 셀 4 · 한 번에 계산하고 헤드로 나누기</title><link rel="stylesheet" href="../assets/lesson.css"><link rel="stylesheet" href="../assets/practice.css"><script src="../assets/practice.js" defer></script><script src="../assets/causal-mask-demo.js" defer></script></head><body class="course"><header class="hero"><span class="badge">CHAPTER 3 / 전체 셀 순서 4 / 설명 7분 + 연습 10분</span><h1>셀 4 · 한 번에 계산하고 헤드로 나누기</h1><p class="lead">view·transpose·헤드별 Attention·합치기·out_proj 흐름</p><p class="muted">기준: Chapter_3_Excercise_Attention.ipynb. 번호는 실행 횟수가 아니라 파일 위에서부터 센 셀 순서입니다. 자체 연습 문제이며 출제 여부는 강사 공지를 따릅니다.</p></header><nav><a href="chapter-3.html">Chapter 3 목차</a><a href="0012-multihead-wrapper.html">이전 수업</a><a href="#exam">확인 문제</a><a href="../reference/chapter-3-attention.html">복습 카드</a></nav><div class="controls"><button id="exam-toggle" class="action" type="button" aria-pressed="false">설명 가리고 시험 보기</button></div><main><div class="reading"><div class="callout"><strong>저장된 출력과 현재 코드가 다릅니다.</strong><p>이 셀의 실행 코드는 <code>d_out=2, num_heads=2</code>이므로 현재 출력은 <strong>(2,6,2)</strong>가 맞습니다. 노트북에 남아 있는 (2,6,4) 출력은 현재 설정의 실행 결과로 볼 수 없습니다. shape 판단은 현재 코드로 하고 커널 재시작 후 다시 실행하세요.</p></div><h2>1. d_out을 여러 헤드에 나눠 줍니다</h2><p>이번 <code>MultiHeadAttention</code>의 d_out은 <strong>최종 전체 차원</strong>입니다. 전체 d_out=4, num_heads=2인 설명용 예라면 head_dim=2입니다. 교안 실제 호출의 d_out=2라면 head_dim=1입니다.</p>
+<div class="flow"><div class="flow-box"><b>투영</b>(B,T,d_out)</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>view + transpose</b>(B,H,T,head_dim)</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>헤드별 계산</b>scores (B,H,T,T)</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>합치기 + out_proj</b>(B,T,d_out)</div></div>
+<h2>2. shape를 따라가면 코드가 보입니다</h2><pre><code># 설명용 B=2, T=6, 전체 d_out=4, H=2
+keys = self.W_key(x)                   # (2,6,4)
+keys = keys.view(2, 6, 2, 2)            # (B,T,H,D)
+keys = keys.transpose(1, 2)            # (2,2,6,2): (B,H,T,D)
+# queries, values에도 같은 변환
+attn_scores = queries @ keys.transpose(2, 3)  # (2,2,6,6)</code></pre>
+<p>view는 벡터의 마지막 축을 헤드 수와 헤드당 차원으로 나눕니다. transpose는 head 축을 앞으로 옮겨 각 헤드에서 토큰끼리 계산하게 합니다. 값의 총개수는 유지됩니다.</p><p><strong>예시:</strong> 한 토큰의 벡터 [a,b,c,d]를 두 헤드로 나누면 헤드 0은 [a,b], 헤드 1은 [c,d]입니다. 각 헤드는 같은 전체 입력에서 서로 다른 학습 가능한 투영 결과를 받습니다.</p>
+<h2>3. 마스크와 합치기</h2><pre><code>attn_scores.masked_fill_(mask_bool, -torch.inf)
+attn_weights = torch.softmax(
+    attn_scores / keys.shape[-1]**0.5, dim=-1
+)
+context_vec = (attn_weights @ values).transpose(1, 2)
+context_vec = context_vec.contiguous().view(b, num_tokens, self.d_out)
+context_vec = self.out_proj(context_vec)</code></pre>
+<p>keys.shape[-1]은 <strong>head_dim</strong>입니다. 전체 d_out의 제곱근이 아니라 각 헤드의 비교 차원으로 나눕니다. (T,T) 마스크는 batch와 head 축에 공통 적용됩니다.</p><p>transpose 뒤에는 메모리 배치가 바뀌어 view가 바로 불가능할 수 있어 contiguous()를 사용합니다. 헤드를 합친 뒤 out_proj는 마지막 차원을 다시 선형 변환해 헤드 정보를 섞습니다. <strong>주석에 optional이라고 적혀 있어도 현재 구현은 항상 out_proj를 호출합니다.</strong></p>
+<table><thead><tr><th>구현</th><th>d_out의 의미</th><th>헤드 2개·d_out=2</th><th>out_proj</th></tr></thead><tbody><tr><td>Wrapper</td><td>헤드 하나의 차원</td><td>전체 출력 4</td><td>없음</td></tr><tr><td>통합 구현</td><td>전체 출력 차원</td><td>헤드당 1, 전체 출력 2</td><td>있음</td></tr></tbody></table><p>차원을 공평하게 비교하려면 Wrapper의 헤드당 2·헤드 2개와 통합 구현의 전체 4·헤드 2개를 대응시킵니다. 파라미터와 out_proj까지 맞추지 않으면 숫자 출력이 같을 이유는 없습니다.</p><p><code>d_out % num_heads == 0</code>은 마지막 축을 똑같이 나눌 수 있어야 한다는 조건입니다. 예: 전체 5차원은 헤드 2개로 균등하게 나눌 수 없어 assert에서 멈춥니다. num_heads는 양의 정수를 전제로 합니다.</p><details><summary>시도 후 셀 4 전체 완성 코드 보기</summary><pre data-source-cell="4"><code>class MultiHeadAttention(nn.Module):
+    def __init__(self, d_in, d_out, context_length, dropout, num_heads, qkv_bias=False):
+        super().__init__()
+        assert (d_out % num_heads == 0), \
+            &quot;d_out must be divisible by num_heads&quot;
+
+        self.d_out = d_out
+        self.num_heads = num_heads
+        self.head_dim = d_out // num_heads # Reduce the projection dim to match desired output dim
+
+        self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
+        self.W_key = nn.Linear(d_in, d_out, bias=qkv_bias)
+        self.W_value = nn.Linear(d_in, d_out, bias=qkv_bias)
+        self.out_proj = nn.Linear(d_out, d_out)  # Linear layer to combine head outputs
+        self.dropout = nn.Dropout(dropout)
+        self.register_buffer(
+            &quot;mask&quot;,
+            torch.triu(torch.ones(context_length, context_length),
+                       diagonal=1)
+        )
+
+    def forward(self, x):
+        b, num_tokens, d_in = x.shape
+
+        keys = self.W_key(x) # Shape: (b, num_tokens, d_out)
+        queries = self.W_query(x)
+        values = self.W_value(x)
+
+        keys = keys.view(b, num_tokens, self.num_heads, self.head_dim)
+        values = values.view(b, num_tokens, self.num_heads, self.head_dim)
+        queries = queries.view(b, num_tokens, self.num_heads, self.head_dim)
+
+        keys = keys.transpose(1, 2)
+        queries = queries.transpose(1, 2)
+        values = values.transpose(1, 2)
+
+        attn_scores = queries @ keys.transpose(2, 3)  # Dot product for each head
+
+        mask_bool = self.mask.bool()[:num_tokens, :num_tokens]
+
+        attn_scores.masked_fill_(mask_bool, -torch.inf)
+
+        attn_weights = torch.softmax(attn_scores / keys.shape[-1]**0.5, dim=-1)
+        attn_weights = self.dropout(attn_weights)
+
+        context_vec = (attn_weights @ values).transpose(1, 2)
+
+        context_vec = context_vec.contiguous().view(b, num_tokens, self.d_out)
+        context_vec = self.out_proj(context_vec) # optional projection
+
+        return context_vec
+
+torch.manual_seed(123)
+
+batch_size, context_length, d_in = batch.shape
+d_out = 2
+mha = MultiHeadAttention(d_in, d_out, context_length, 0.0, num_heads=2)
+
+context_vecs = mha(batch)
+
+print(context_vecs)
+print(&quot;context_vecs.shape:&quot;, context_vecs.shape)</code></pre><p>원본 셀의 실행 코드에 정답만 채우고 주석을 줄인 버전입니다. 이전 셀의 import·클래스·batch에 의존하므로 순서대로 실행하세요. 원본 노트북은 수정하지 않았습니다.</p></details></div><section id="exam"><h2>직접 확인하기</h2><p>1~5번 자동 확인, 6번 설명 비교, 7번 직접 코딩입니다. 브라우저는 Python을 실행하지 않고 답을 저장·전송하지 않습니다.</p><noscript>JavaScript가 꺼져 있으면 정답·해설을 열어 비교하세요.</noscript><article class="quiz"><h3>01 · 헤드당 차원</h3><p>전체 d_out=8, num_heads=4이면 head_dim은?</p><form data-answer="2" data-explanation="8을 4개 헤드에 나누므로 2입니다."><label for="q1">답 입력</label><input id="q1" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>2</strong>. 8을 4개 헤드에 나누므로 2입니다.</p></details></article><article class="quiz"><h3>02 · 현재 교안 출력</h3><p>현재 호출 d_out=2, num_heads=2이면 최종 출력의 마지막 차원은?</p><form data-answer="2" data-explanation="이 구현의 d_out은 전체 출력 차원입니다. 저장된 4와 구분하세요."><label for="q2">답 입력</label><input id="q2" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>2</strong>. 이 구현의 d_out은 전체 출력 차원입니다. 저장된 4와 구분하세요.</p></details></article><article class="quiz"><h3>03 · 메모리 배치 준비</h3><pre><code>context_vec = context_vec.????().view(b, num_tokens, self.d_out)</code></pre><form data-answer="contiguous" data-explanation="transpose한 뒤 view에 맞는 연속적인 메모리 배치를 준비합니다."><label for="q3">답 입력</label><input id="q3" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>contiguous</strong>. transpose한 뒤 view에 맞는 연속적인 메모리 배치를 준비합니다.</p></details></article><article class="quiz"><h3>04 · 스케일링에 쓸 차원</h3><p>전체 8, 헤드 수 4이면 점수를 나눌 제곱근 안의 숫자는?</p><form data-answer="2" data-explanation="헤드당 Q·K 차원은 8/4=2이므로 sqrt(2)로 나눕니다."><label for="q4">답 입력</label><input id="q4" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>2</strong>. 헤드당 Q·K 차원은 8/4=2이므로 sqrt(2)로 나눕니다.</p></details></article><article class="quiz"><h3>05 · 이름이 같은 d_out</h3><p>“Wrapper와 통합 구현에서 d_out은 항상 같은 의미다.”</p><form data-answer="X" data-explanation="Wrapper는 헤드당 차원, 통합 구현은 최종 전체 차원으로 사용합니다."><label><input type="radio" name="answer" value="O"> O</label><label><input type="radio" name="answer" value="X"> X</label><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>X</strong>. Wrapper는 헤드당 차원, 통합 구현은 최종 전체 차원으로 사용합니다.</p></details></article><article class="quiz"><h3>06 · 내 말로 설명</h3><p>view와 transpose는 각각 무엇을 바꾸며, out_proj는 왜 마지막 차원을 늘리지 않나요?</p><label for="q6">나의 설명</label><textarea id="q6" placeholder="먼저 내 말로 설명해 보세요."></textarea><details><summary>작성 후 비교할 해설</summary><p>예: (2,6,4)를 view로 (2,6,2,2)로 나누고 transpose로 (2,2,6,2)로 축을 바꿉니다. out_proj는 Linear(d_out,d_out)이라 마지막 크기는 유지하면서 값들을 섞습니다.</p></details></article><article class="quiz"><h3>07 · 직접 코딩</h3><p>제출: <code>practice/day-01/multihead-split.ipynb</code>. 직접 파일을 만드세요. 예상 5~10분. 앞서 배운 클래스를 같은 노트북에서 먼저 정의하고 시작합니다.</p><p>현재 클래스 정의 후 전체 출력 8·헤드 4로 실행하고 shape·인과성을 확인하세요. 출력 5·헤드 2에서 오류가 나는 이유도 설명하세요.</p><details><summary>시도 후 확인 코드</summary><pre><code>torch.manual_seed(123)
+x = torch.randn(2, 4, 3)
+mha = MultiHeadAttention(3, 8, 4, 0.0, num_heads=4)
+result = mha(x)
+assert mha.head_dim == 2
+assert tuple(result.shape) == (2, 4, 8)
+changed = x.clone()
+changed[:, 3, :] += 100
+assert torch.allclose(mha(x)[:, :3], mha(changed)[:, :3], atol=1e-6)
+try:
+    MultiHeadAttention(3, 5, 4, 0.0, num_heads=2)
+except AssertionError:
+    print(&quot;5차원은 2개 헤드로 균등 분할 불가&quot;)
+else:
+    raise AssertionError(&quot;잘못된 차원에서 오류가 나야 합니다&quot;)</code></pre><p>출력 shape는 전체 d_out을 따릅니다. 이 실습에서는 dropout=0으로 인과성 검사를 결정적으로 만듭니다.</p></details><p>완료 기준: 새 커널 전체 실행, 검사 통과, 코드의 이유 설명. 답을 보았다면 도움받은 사실을 기록하고 다음날 다시 작성합니다.</p></article><div class="controls"><button id="quiz-reset" class="action" type="button">자동 확인 문제 다시 풀기</button></div><p>자동 확인 입력만 초기화하며 설명 메모는 유지합니다.</p></section><footer><p>이해되지 않는 부분이나 작성한 코드를 에이전트에게 보내 주세요. 설명을 읽은 것과 독립 구현의 숙달은 구분합니다.</p><p><a href="0012-multihead-wrapper.html">이전</a> · <a href="0014-multihead-diagram.html">다음</a> · <a href="../class-notes/day-01.md">오늘 노트</a></p><p class="source">교안: <a href="../llm_hands_on/Chapter_3_Excercise_Attention.ipynb">셀 4</a>. 추천 공식 자료: <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html">PyTorch Module</a>, <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.ModuleList.html">ModuleList</a>. 수식 복습: <a href="0009-attention-qkv.html">Q·K·V 기초 수업</a>. </p></footer></main></body></html>

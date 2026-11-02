@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Day 1 · 글자가 숫자로 바뀌는 순간</title><link rel="stylesheet" href="../assets/lesson.css"><link rel="stylesheet" href="../assets/practice.css"><script src="../assets/practice.js" defer></script></head>
+<body class="course">
+<header class="hero"><span class="badge">DAY 01 / 첫 실습 블록 / 설명 5분 + 연습 10분</span><h1>글자가 숫자로 바뀌는 순간</h1><p class="lead">BPE → 토큰 ID → 원래 문자열.<br>오늘은 <code>encode</code>와 <code>decode</code> 두 줄을 혼자 쓰고 설명합니다.</p><p class="muted">기준: Chapter_2_Exercise_Dataset.ipynb 첫 코드 셀. 시험 형식을 연습하는 자체 문제이며 실제 출제 확정 문제는 아닙니다.</p></header>
+<nav><a href="#flow">흐름 그림</a><a href="#bpe">BPE</a><a href="#code">교안 코드</a><a href="#exam">시험 문제</a><a href="../reference/bpe-tokenizer.html">복습 카드</a></nav>
+<div class="controls"><button class="action" id="exam-toggle" type="button" aria-pressed="false">설명 가리고 시험 보기</button></div>
+<main>
+<div class="reading">
+<section id="flow"><h2>1. 토크나이저는 ‘조각과 번호’를 다룹니다</h2><p><strong>토큰(token)</strong>은 텍스트를 처리하는 조각, <strong>토크나이저(tokenizer)</strong>는 텍스트를 그 조각들의 ID로 바꾸는 도구입니다.</p>
+<div class="flow" role="img" aria-label="문자열 Hello 쉼표를 GPT-2 토크나이저로 인코딩하면 ID 15496과 11이 되고 같은 토크나이저로 디코딩하면 원문으로 돌아갑니다"><div class="flow-box"><b>문자열</b><code>"Hello,"</code></div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>encode</b>조각을 나누고 ID 찾기</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>ID 리스트</b><code>[15496, 11]</code></div></div>
+<p style="text-align:center">같은 토크나이저의 <strong>decode</strong>로 돌아오면 → <code>"Hello,"</code></p>
+<div class="tokens"><div class="token"><code>Hello</code><small>ID 15496</small></div><div class="token"><code>,</code><small>ID 11</small></div></div>
+<p>숫자는 <strong>어휘표에 정해진 식별 번호</strong>예요. 전화번호부에서 이름에 대응하는 번호를 찾듯, 토큰에 대응하는 ID를 찾습니다. <code>15496</code>는 글자 수·중요도·뜻의 점수가 아닙니다. 정수 하나의 타입은 <code>int</code>, 여러 ID를 담은 <code>integers</code>는 <code>list[int]</code>입니다.</p><p class="source">이 ID와 아래 출력은 교안 노트북에 저장된 GPT-2 실행 결과를 기준으로 합니다. 인코딩 방식이 달라지면 같은 글자도 다른 ID가 될 수 있습니다. <a href="https://github.com/openai/tiktoken">tiktoken 공식 예제</a></p></section>
+<section id="bpe"><h2>2. BPE는 자주 붙는 조각을 합칩니다</h2><p><strong>BPE = Byte Pair Encoding(바이트 페어 인코딩).</strong> 토크나이저를 학습할 때 자주 함께 등장하는 인접 조각 두 개를 합치는 규칙을 만듭니다.</p><div class="flow" role="img" aria-label="BPE 학습을 단순화한 예시: l o w에서 l과 o를 합치고 lo와 w를 합쳐 low가 됩니다"><div class="flow-box"><b>작은 조각</b><code>l | o | w</code></div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>자주 붙으면 합치기</b><code>lo | w</code></div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>더 큰 조각</b><code>low</code></div></div>
+<p>위 그림은 해당 쌍이 자주 나온다고 가정한 학습용 예시이며 GPT-2의 실제 병합 순서를 뜻하지 않습니다. GPT-2는 UTF-8 바이트를 기본 단위로 하는 <strong>byte-level BPE</strong>를 사용합니다.</p><div class="callout"><strong>지금 코드에서는 BPE를 새로 학습하지 않습니다.</strong><br><code>get_encoding("gpt2")</code>로 이미 정해진 어휘표와 병합 규칙을 불러온 뒤, <code>encode</code>로 적용합니다. 자주 쓰는 조각을 묶을 수 있고 낯선 단어도 더 작은 조각으로 표현할 수 있습니다.</div><p class="source"><a href="https://huggingface.co/learn/llm-course/chapter6/5">Hugging Face: BPE 학습과 적용의 차이</a></p></section>
+<section id="code"><h2>3. 교안 코드, 꼭 필요한 부분만</h2>
+<pre><code>import importlib.metadata
+import tiktoken
+
+print("tiktoken version:", importlib.metadata.version("tiktoken"))
+tokenizer = tiktoken.get_encoding("gpt2")
+
+text = (
+    "Hello, do you like tea? &lt;|endoftext|&gt; In the sunlit terraces"
+    "of someunknownPlace."
+)
+
+integers = tokenizer.encode(text, allowed_special={"&lt;|endoftext|&gt;"})
+print(integers)
+
+strings = tokenizer.decode(integers)
+print(strings)
+assert strings == text</code></pre>
+<table><thead><tr><th>코드</th><th>쉽게 말하면</th></tr></thead><tbody><tr><td><code>importlib.metadata.version(...)</code></td><td>설치한 패키지 버전 확인. 토큰화 자체를 하는 줄은 아닙니다. 하위 모듈을 명시적으로 import했습니다.</td></tr><tr><td><code>get_encoding("gpt2")</code></td><td>GPT-2의 인코딩 규칙 선택. 인자는 정확히는 인코딩 이름입니다. GPT 모델의 가중치를 불러오는 동작은 아닙니다.</td></tr><tr><td><code>encode(text, ...)</code></td><td>문자열 → 토큰 ID 리스트.</td></tr><tr><td><code>allowed_special={...}</code></td><td>원문 속 종료 표시를 하나의 특수 토큰으로 인식하도록 허용.</td></tr><tr><td><code>decode(integers)</code></td><td>같은 규칙으로 ID 리스트 → 문자열 복원.</td></tr></tbody></table>
+<p class="source"><a href="https://github.com/openai/tiktoken/blob/main/tiktoken/core.py">공식 encode/decode API와 특수 토큰 처리</a></p>
+<details><summary>교안에 저장된 실제 출력 살펴보기</summary><pre><code>[15496, 11, 466, 345, 588, 8887, 30, 220, 50256,
+ 554, 262, 4252, 18250, 8812, 2114, 1659, 617,
+ 34680, 27271, 13]</code></pre><p><code>15496</code>는 Hello, <code>11</code>은 쉼표, <code>50256</code>은 이 인코딩의 <code>&lt;|endoftext|&gt;</code>입니다. 문장 전체가 20개 토큰으로 표현됩니다. 단어 하나가 언제나 토큰 하나인 것은 아닙니다.</p><p>출처는 원본 노트북의 저장된 출력입니다. 이 HTML이 실시간으로 Python을 실행한 결과는 아닙니다.</p></details>
+<div class="callout"><strong>원문을 그대로 복원한다는 뜻</strong><br>교안의 두 문자열 사이에는 자동으로 공백이 생기지 않아 <code>terracesof</code>가 됩니다. <code>decode</code>는 이를 <code>terraces of</code>로 교정하지 않습니다. 띄어쓰기를 원하면 원본 문자열에 공백을 넣어야 합니다.</div>
+<p><code>&lt;|endoftext|&gt;</code>는 종료 표시에 쓰는 특수 토큰이지만, 여기서는 그 뒤에 텍스트가 있어도 함께 인코딩됩니다. 이 옵션은 인코딩을 중단시키라는 명령이 아닙니다.</p></section>
+</div>
+<section id="exam"><h2>4. 이제 설명을 가리고 풀어 보세요</h2><p>브라우저는 답만 확인하며 Python 코드를 실행하지 않습니다. 입력 내용은 서버로 전송하거나 학습 기록에 자동 저장하지 않습니다. 실제 코딩은 마지막 문제에서 합니다.</p><noscript><p>JavaScript가 꺼져 있습니다. 자동 확인 대신 아래 ‘정답·해설’을 열어 확인하세요.</p></noscript>
+<article class="quiz"><h3>01 · 문자열을 숫자로</h3><pre><code>integers = tokenizer.????(text, allowed_special={"&lt;|endoftext|&gt;"})</code></pre><form data-answer="encode" data-explanation="문자열에서 토큰 ID로 가는 방향은 encode입니다."><label for="q1">메서드 이름만 입력</label><input id="q1" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><code>encode</code>. 예: <code>tokenizer.encode("Hello,")</code> → <code>[15496, 11]</code>.</p></details></article>
+<article class="quiz"><h3>02 · 숫자를 문자열로</h3><pre><code>strings = tokenizer.????(integers)</code></pre><form data-answer="decode" data-explanation="토큰 ID에서 문자열로 돌아오는 방향은 decode입니다."><label for="q2">메서드 이름만 입력</label><input id="q2" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><code>decode</code>. 예: <code>tokenizer.decode([15496, 11])</code> → <code>"Hello,"</code>.</p></details></article>
+<article class="quiz"><h3>03 · 숫자의 뜻</h3><p>“ID가 15496인 토큰은 ID가 11인 토큰보다 중요하다.”</p><form data-answer="X" data-explanation="ID는 어휘표의 식별 번호입니다. 숫자 크기로 중요도나 의미를 비교하지 않습니다."><label><input type="radio" name="answer" value="O"> O</label><label><input type="radio" name="answer" value="X"> X</label><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p>X. ID는 식별 번호입니다. 예: Hello의 ID 15496과 쉼표의 ID 11은 중요도 점수가 아닙니다.</p></details></article>
+<article class="quiz"><h3>04 · BPE를 언제 학습할까?</h3><p>“이 실습의 encode는 이미 정해진 BPE 규칙을 사용한다.”</p><form data-answer="O" data-explanation="get_encoding으로 준비된 규칙을 골랐습니다. 호출할 때마다 빈도와 어휘표를 새로 학습하지 않습니다."><label><input type="radio" name="answer" value="O"> O</label><label><input type="radio" name="answer" value="X"> X</label><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p>O. 이미 배운 규칙을 적용합니다. BPE 학습 예시는 <code>l | o → lo</code>처럼 자주 붙는 쌍을 합치는 것입니다.</p></details></article>
+<article class="quiz"><h3>05 · 디코딩 결과 예측</h3><pre><code>text = "terraces" "of"
+restored = tokenizer.decode(tokenizer.encode(text))</code></pre><form data-answer="terracesof|'terracesof'|&quot;terracesof&quot;" data-explanation="인접한 문자열은 공백 없이 이어집니다. decode는 원문을 복원하며 띄어쓰기를 교정하지 않습니다."><label for="q5">restored의 문자열 내용</label><input id="q5" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><code>terracesof</code>. 예: <code>"a" "b"</code>도 <code>"ab"</code>가 됩니다.</p></details></article>
+<article class="quiz"><h3>06 · 특수 토큰을 내 말로</h3><p><code>allowed_special={"&lt;|endoftext|&gt;"}</code>는 왜 넣을까요? 답을 한 문장으로 적으세요.</p><label for="q6">나의 설명 (직접 비교하는 문제)</label><textarea id="q6" placeholder="먼저 내 말로 써 보세요."></textarea><details><summary>작성 후 비교할 해설</summary><p>원문에 있는 <code>&lt;|endoftext|&gt;</code>를 특수 토큰으로 인식하도록 허용하기 위해서입니다. 예: 이 GPT-2 규칙에서는 ID <code>50256</code>에 대응합니다. 이 문자열이 있는 상태에서 기본 설정으로 encode하면 오류가 날 수 있습니다.</p></details></article>
+<article class="quiz"><h3>07 · 빈 노트북 실기</h3><p>이 페이지를 닫고 <code>practice/day-01/tokenizer-roundtrip.ipynb</code>에 작성하세요. 예상 5분. 폴더와 파일은 직접 만듭니다.</p><ol><li>tiktoken을 import하고 GPT-2 인코딩을 선택합니다.</li><li><code>"Hello, &lt;|endoftext|&gt; tea?"</code>를 인코딩하고 ID 리스트와 토큰 개수를 출력합니다.</li><li>디코딩해 출력하고 원문과 같은지 assert로 검사합니다.</li><li>숫자 ID가 뜻하는 것과 특수 토큰 옵션을 한 문장씩 설명합니다.</li></ol><details><summary>시도 후 모범 코드</summary><pre><code>import tiktoken
+tokenizer = tiktoken.get_encoding("gpt2")
+text = "Hello, &lt;|endoftext|&gt; tea?"
+ids = tokenizer.encode(text, allowed_special={"&lt;|endoftext|&gt;"})
+print(ids, len(ids))
+restored = tokenizer.decode(ids)
+print(restored)
+assert restored == text</code></pre><p>완료 기준: 새 커널에서 전체 실행 성공 + 원문 복원 + 두 문장 설명. 답안을 보았다면 도움받아 완료로 기록하고, 다음날 자료 없이 다시 작성합니다.</p></details></article>
+<div class="controls"><button class="action" id="quiz-reset" type="button">자동 확인 문제 다시 풀기</button></div><p>6번 메모는 초기화 대상이 아닙니다. 자동 확인 문제는 1~5번입니다. 답변이나 코드를 에이전트에게 보내면 오답 이유와 설명도 함께 확인합니다.</p>
+</section>
+<footer><h2>다음날 1분 복습</h2><p>아무것도 보지 않고 두 메서드를 쓰고, “왜 숫자가 나오는가?”에 답해 보세요. 이해되지 않는 부분은 이 에이전트에게 바로 질문하세요.</p><p>함께 보기: <a href="../reference/bpe-tokenizer.html">한 장 요약</a> · <a href="0001-tensor-shapes.html">이전 기초 진단</a> · <a href="../class-notes/day-01.md">오늘 필기</a></p><p class="source">추천 원문: <a href="https://github.com/openai/tiktoken">tiktoken README</a>의 encode/decode 예제를 먼저 읽어 보세요. BPE 보충: <a href="https://huggingface.co/learn/llm-course/chapter6/5">Hugging Face BPE 과정</a>. 교안 근거: <a href="../llm_hands_on/Chapter_2_Exercise_Dataset.ipynb">Chapter 2 첫 셀과 저장된 출력</a>. PDF 본문을 인용한 수업은 아닙니다.</p></footer>
+<p><a href="0003-text-to-next-token.html">다음 수업 → 파일에서 다음 토큰 정답 만들기</a></p>
+</main></body></html>

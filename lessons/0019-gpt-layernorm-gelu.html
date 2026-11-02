@@ -1,0 +1,62 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Chapter 4 · 셀 3 · LayerNorm·GELU·FeedForward</title><link rel="stylesheet" href="../assets/lesson.css"><link rel="stylesheet" href="../assets/practice.css"><script src="../assets/practice.js" defer></script><script src="../assets/gpt-generation-demo.js" defer></script></head><body class="course"><header class="hero"><span class="badge">CHAPTER 4 / 전체 셀 3 / 설명 7분 + 연습 10분</span><h1>셀 3 · LayerNorm·GELU·FeedForward</h1><p class="lead">정규화하고 비선형으로 가공하되 출력 크기는 유지하기</p><p class="muted">셀 번호는 파일 위에서부터 센 순서입니다. 자체 연습 문제이며 실제 출제 범위는 강사 공지를 따릅니다.</p></header><nav><a href="chapter-4.html">Chapter 4 목차</a><a href="0018-gpt-attention-review.html">이전</a><a href="#exam">확인 문제</a><a href="../reference/chapter-4-gpt.html">복습 카드</a></nav><div class="controls"><button id="exam-toggle" class="action" type="button" aria-pressed="false">설명 가리고 시험 보기</button></div><main><div class="reading"><h2>1. 세 모듈의 역할</h2><table><thead><tr><th>모듈</th><th>역할</th><th>작은 예</th></tr></thead><tbody><tr><td>LayerNorm(층 정규화)</td><td>한 토큰 벡터의 마지막 축을 정규화</td><td>[1,3] → 대략 [-1,1]</td></tr><tr><td>GELU</td><td>Gaussian Error Linear Unit, 비선형 활성화</td><td>0은 0, 작은 음수는 일부 남길 수 있음</td></tr><tr><td>FeedForward(순방향 네트워크)</td><td>각 토큰을 개별적으로 가공</td><td>8차원 → 32차원 → 8차원</td></tr></tbody></table>
+<h2>2. LayerNorm 빈칸 네 곳</h2><pre><code>mean = x.mean(dim=-1, keepdim=True)
+var = x.var(dim=-1, keepdim=True, unbiased=False)
+norm_x = (x - mean) / torch.sqrt(var + self.eps)
+return self.scale * norm_x + self.shift</code></pre>
+<p>답은 <strong>mean, var, scale, shift</strong>입니다. keepdim=True는 평균·분산의 축을 남겨 원래 벡터와 계산할 수 있게 합니다. unbiased=False로 이 벡터 자체의 분산을 계산합니다. eps=1e-5는 0으로 나누는 상황을 완화합니다.</p><p><strong>숫자 예:</strong> [1,3]의 평균은 2, 분산은 1입니다. 평균을 빼면 [-1,1], sqrt(1+eps)로 나누면 거의 [-1,1]입니다. 초기 scale=1·shift=0이고 이후 학습할 수 있으므로 최종 출력이 언제나 평균 0·분산 1로 고정되는 것은 아닙니다. 배치나 토큰끼리 평균내는 코드가 아닙니다.</p>
+<h2>3. GELU와 FeedForward의 세 빈칸</h2><pre><code>self.layers = nn.Sequential(
+    nn.Linear(cfg[&quot;emb_dim&quot;], 4 * cfg[&quot;emb_dim&quot;]),
+    GELU(),
+    nn.Linear(4 * cfg[&quot;emb_dim&quot;], cfg[&quot;emb_dim&quot;]),
+)</code></pre><p>답은 <strong>4, GELU, 4</strong>입니다. GELU가 비선형성을 추가하므로 두 Linear만 합친 것과 다른 표현을 배울 수 있습니다. 이 교안 GELU는 tanh를 이용한 근사식이며 ReLU처럼 모든 음수를 0으로 만들지는 않습니다.</p><div class="flow"><div class="flow-box"><b>입력</b>(B,T,8)</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>Linear 확장</b>(B,T,32)</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>GELU</b>(B,T,32)</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>Linear 축소</b>(B,T,8)</div></div><p>FeedForward는 각 토큰에 같은 네트워크를 적용합니다. 토큰 사이의 정보를 섞는 역할은 앞의 Attention이 맡습니다. nn.Sequential은 순서대로 모듈을 통과시킵니다.</p><details><summary>시도 후 셀 3 전체 완성 코드 보기</summary><pre data-source-cell="3"><code>class LayerNorm(nn.Module):
+    &quot;&quot;&quot;
+    층 정규화 (Layer Normalization): 학습 안정성을 높임
+    &quot;&quot;&quot;
+    def __init__(self, emb_dim):
+        super().__init__()
+        self.eps = 1e-5
+        self.scale = nn.Parameter(torch.ones(emb_dim)) # 학습 가능한 스케일 파라미터 (Gamma)
+        self.shift = nn.Parameter(torch.zeros(emb_dim)) # 학습 가능한 시프트 파라미터 (Beta)
+
+    def forward(self, x):
+        mean = x.mean(dim=-1, keepdim=True)
+        var = x.var(dim=-1, keepdim=True, unbiased=False)
+        norm_x = (x - mean) / torch.sqrt(var + self.eps)
+        return self.scale * norm_x + self.shift
+
+class GELU(nn.Module):
+    &quot;&quot;&quot;
+    GELU 활성화 함수: GPT 계열에서 주로 사용하는 비선형 함수
+    &quot;&quot;&quot;
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        return 0.5 * x * (1 + torch.tanh(
+            torch.sqrt(torch.tensor(2.0 / torch.pi)) *
+            (x + 0.044715 * torch.pow(x, 3))
+        ))
+
+class FeedForward(nn.Module):
+    &quot;&quot;&quot;
+    피드 포워드 네트워크 (Feed-Forward Network)
+    어텐션이 모은 정보를 각 토큰별로 개별적으로 가공하는 역할
+    보통 임베딩 차원을 4배로 늘렸다가 다시 줄임
+    &quot;&quot;&quot;
+    def __init__(self, cfg):
+        super().__init__()
+        self.layers = nn.Sequential(
+            nn.Linear(cfg[&quot;emb_dim&quot;], 4 * cfg[&quot;emb_dim&quot;]),
+            GELU(),
+            nn.Linear(4 * cfg[&quot;emb_dim&quot;], cfg[&quot;emb_dim&quot;]),
+        )
+
+    def forward(self, x):
+        return self.layers(x)</code></pre><p>원본 실행 코드에 정답을 채우고 주석을 줄였습니다. 이전 셀 정의에 의존하므로 위에서 아래로 실행하세요. 원본 노트북은 변경하지 않았습니다.</p></details></div><section id="exam"><h2>기억해서 풀어 보기</h2><p>1~5번 자동 확인, 6번 설명 비교, 7번 직접 코딩입니다. 브라우저는 Python을 실행하지 않고 답을 저장·전송하지 않습니다.</p><noscript>JavaScript가 꺼져 있으면 정답·해설을 열어 비교하세요.</noscript><article class="quiz"><h3>01 · 평균 빼기</h3><pre><code>norm_x = (x - ????) / torch.sqrt(var + self.eps)</code></pre><form data-answer="mean" data-explanation="예: [1,3]의 평균 2를 빼면 [-1,1]입니다."><label for="q1">답 입력</label><input id="q1" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>mean</strong>. 예: [1,3]의 평균 2를 빼면 [-1,1]입니다.</p></details></article><article class="quiz"><h3>02 · 분산 사용</h3><pre><code>norm_x = (x - mean) / torch.sqrt(???? + self.eps)</code></pre><form data-answer="var" data-explanation="분산에 eps를 더해 제곱근으로 나눕니다."><label for="q2">답 입력</label><input id="q2" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>var</strong>. 분산에 eps를 더해 제곱근으로 나눕니다.</p></details></article><article class="quiz"><h3>03 · 확장 배수</h3><pre><code>nn.Linear(cfg[&quot;emb_dim&quot;], ???? * cfg[&quot;emb_dim&quot;])</code></pre><form data-answer="4" data-explanation="예: 8차원을 32차원으로 늘립니다."><label for="q3">답 입력</label><input id="q3" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>4</strong>. 예: 8차원을 32차원으로 늘립니다.</p></details></article><article class="quiz"><h3>04 · 활성화 함수</h3><pre><code>nn.Sequential(nn.Linear(8,32), ????(), nn.Linear(32,8))</code></pre><form data-answer="GELU" data-explanation="교안은 tanh 근사 GELU를 정의해 사용합니다."><label for="q4">답 입력</label><input id="q4" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>GELU</strong>. 교안은 tanh 근사 GELU를 정의해 사용합니다.</p></details></article><article class="quiz"><h3>05 · 정규화할 축</h3><p>“이 LayerNorm은 서로 다른 문장들을 한꺼번에 평균내서 정규화한다.”</p><form data-answer="X" data-explanation="각 토큰의 마지막 벡터 축만 정규화합니다."><label><input type="radio" name="answer" value="O"> O</label><label><input type="radio" name="answer" value="X"> X</label><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>X</strong>. 각 토큰의 마지막 벡터 축만 정규화합니다.</p></details></article><article class="quiz"><h3>06 · 내 말로 설명</h3><p>scale·shift가 학습 가능한 이유와 FeedForward 출력 크기가 입력과 같은 이유를 설명하세요.</p><label for="q6">나의 설명</label><textarea id="q6" placeholder="내 말로 먼저 설명해 보세요."></textarea><details><summary>작성 후 비교할 해설</summary><p>scale·shift는 nn.Parameter로 등록되어 정규화 뒤 변환을 학습합니다. FeedForward는 마지막 Linear로 원래 emb_dim으로 줄여 residual 덧셈에 맞는 크기를 유지합니다. 예: (2,3,8) → (2,3,32) → (2,3,8).</p></details></article><article class="quiz"><h3>07 · 빈 노트북 실기</h3><p>제출: <code>practice/day-01/gpt-layernorm.ipynb</code>. 파일은 직접 만드세요. 예상 5~10분. 필요한 앞 셀의 클래스를 같은 노트북에서 먼저 정의합니다.</p><p>LayerNorm을 표준 PyTorch 모듈과 대조하고 FeedForward shape를 검사하세요.</p><details><summary>시도 후 확인 코드</summary><pre><code>x = torch.tensor([[[1., 3.], [2., 6.]]])
+custom = LayerNorm(2)
+standard = nn.LayerNorm(2, eps=1e-5)
+assert torch.allclose(custom(x), standard(x), atol=1e-6)
+a = torch.tensor([-1., 0., 1.])
+assert torch.allclose(GELU()(a), nn.GELU(approximate=&quot;tanh&quot;)(a), atol=1e-6)
+ff = FeedForward({&quot;emb_dim&quot;: 8})
+assert tuple(ff(torch.randn(2, 3, 8)).shape) == (2, 3, 8)</code></pre><p>두 LayerNorm은 초기 scale=1·shift=0 조건에서 비교합니다.</p></details><p>완료 기준: 새 커널 전체 실행, 검사 통과, 핵심 코드 이유 설명. 도움받았다면 기록하고 다음날 자료 없이 재작성합니다.</p></article><div class="controls"><button id="quiz-reset" class="action" type="button">자동 확인 문제 다시 풀기</button></div><p>자동 확인 입력만 초기화하며 설명 메모는 유지합니다.</p></section><footer><p>코드나 이해되지 않는 부분을 에이전트에게 보내 주세요. 다음날 핵심 코드를 자료 없이 다시 작성해 봅니다.</p><p><a href="0018-gpt-attention-review.html">이전</a> · <a href="0020-gpt-model.html">다음</a> · <a href="../class-notes/day-01.md">오늘 노트</a></p><p class="source">교안: <a href="../llm_hands_on/Chapter_4_Excercise_GPT.ipynb">셀 3</a>. 추천 1차 자료: <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.LayerNorm.html">PyTorch 공식 API</a>. GELU 보충: <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.GELU.html">공식 GELU</a>. 이전 개념: <a href="0009-attention-qkv.html">Q·K·V 수업</a>.</p></footer></main></body></html>

@@ -1,0 +1,64 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Chapter 4 · 셀 2 · GPT 안의 MultiHeadAttention</title><link rel="stylesheet" href="../assets/lesson.css"><link rel="stylesheet" href="../assets/practice.css"><script src="../assets/practice.js" defer></script><script src="../assets/gpt-generation-demo.js" defer></script></head><body class="course"><header class="hero"><span class="badge">CHAPTER 4 / 전체 셀 2 / 설명 7분 + 연습 10분</span><h1>셀 2 · GPT 안의 MultiHeadAttention</h1><p class="lead">토큰끼리 정보를 주고받되 미래를 가리는 모듈</p><p class="muted">셀 번호는 파일 위에서부터 센 순서입니다. 자체 연습 문제이며 실제 출제 범위는 강사 공지를 따릅니다.</p></header><nav><a href="chapter-4.html">Chapter 4 목차</a><a href="0017-gpt-data-review.html">이전</a><a href="#exam">확인 문제</a><a href="../reference/chapter-4-gpt.html">복습 카드</a></nav><div class="controls"><button id="exam-toggle" class="action" type="button" aria-pressed="false">설명 가리고 시험 보기</button></div><main><div class="reading"><h2>1. Chapter 3의 통합 헤드 구현 재사용</h2><div class="flow"><div class="flow-box"><b>입력</b>(B,T,d_in)</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>Q·K·V + 헤드 분리</b>(B,H,T,head_dim)</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>마스크 Attention</b>(B,H,T,T) 가중치</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>헤드 결합 + out_proj</b>(B,T,d_out)</div></div><p>여기서 d_out은 전체 출력 크기입니다. 이 셀에는 원래 빈칸이 없으며, <a href="0013-multihead-split.html">Chapter 3 통합 구현 수업</a>과 같은 원리를 복습합니다.</p><p><strong>예시:</strong> 입력 (2,4,8), 전체 출력 8, 헤드 2개면 헤드당 4차원입니다. 점수 shape는 (2,2,4,4), 최종 출력은 (2,4,8)입니다.</p><h2>2. GPT에서 필요한 이유</h2><p>각 위치의 입력 벡터는 다른 허용된 위치의 정보를 모아 문맥이 반영된 벡터로 바뀝니다. 뒤쪽 답을 미리 읽지 않도록 causal mask를 적용합니다.</p><pre><code>attn_scores = queries @ keys.transpose(2, 3)
+attn_scores.masked_fill_(mask_bool, -torch.inf)
+attn_weights = torch.softmax(
+    attn_scores / keys.shape[-1]**0.5, dim=-1
+)
+context_vec = (attn_weights @ values).transpose(1, 2)</code></pre>
+<div class="callout">scores는 비교 점수, softmax 후 weights는 참고 비율, weights @ values는 정보의 가중합입니다. Attention weights와 최종 GPT의 어휘별 다음 토큰 점수를 구분하세요.</div><p>context_length는 미리 만든 마스크의 최대 길이입니다. 실제 입력 T는 이를 넘지 않아야 합니다. dropout 전 softmax 행 합은 1이며, 훈련 중 dropout 후에는 항상 1이라고 보장되지 않습니다.</p><details><summary>시도 후 셀 2 전체 완성 코드 보기</summary><pre data-source-cell="2"><code>class MultiHeadAttention(nn.Module):
+    &quot;&quot;&quot;
+    멀티 헤드 셀프 어텐션 (Multi-Head Self-Attention) 모듈입니다.
+    입력 데이터 간의 관계성을 여러 관점(Head)에서 병렬로 학습합니다.
+    &quot;&quot;&quot;
+    def __init__(self, d_in, d_out, context_length, dropout, num_heads, qkv_bias=False):
+        super().__init__()
+        assert d_out % num_heads == 0, &quot;출력 차원(d_out)은 헤드 수(num_heads)로 나누어 떨어져야 합니다.&quot;
+
+        self.d_out = d_out
+        self.num_heads = num_heads
+        self.head_dim = d_out // num_heads  # 각 헤드가 담당할 차원 크기
+
+        self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
+        self.W_key = nn.Linear(d_in, d_out, bias=qkv_bias)
+        self.W_value = nn.Linear(d_in, d_out, bias=qkv_bias)
+
+        self.out_proj = nn.Linear(d_out, d_out)
+        self.dropout = nn.Dropout(dropout)
+
+        self.register_buffer(&quot;mask&quot;, torch.triu(torch.ones(context_length, context_length), diagonal=1))
+
+    def forward(self, x):
+        b, num_tokens, d_in = x.shape # b: 배치 크기, num_tokens: 시퀀스 길이
+
+        keys = self.W_key(x)     # Shape: (b, num_tokens, d_out)
+        queries = self.W_query(x)
+        values = self.W_value(x)
+
+        keys = keys.view(b, num_tokens, self.num_heads, self.head_dim)
+        values = values.view(b, num_tokens, self.num_heads, self.head_dim)
+        queries = queries.view(b, num_tokens, self.num_heads, self.head_dim)
+
+        keys = keys.transpose(1, 2)
+        queries = queries.transpose(1, 2)
+        values = values.transpose(1, 2)
+
+        attn_scores = queries @ keys.transpose(2, 3)  # 결과 Shape: (b, num_heads, num_tokens, num_tokens)
+
+        mask_bool = self.mask.bool()[:num_tokens, :num_tokens]
+        attn_scores.masked_fill_(mask_bool, -torch.inf)
+
+        attn_weights = torch.softmax(attn_scores / keys.shape[-1]**0.5, dim=-1)
+        attn_weights = self.dropout(attn_weights)
+
+        context_vec = (attn_weights @ values).transpose(1, 2)
+
+        context_vec = context_vec.contiguous().view(b, num_tokens, self.d_out)
+
+        context_vec = self.out_proj(context_vec)
+
+        return context_vec</code></pre><p>원본 실행 코드에 정답을 채우고 주석을 줄였습니다. 이전 셀 정의에 의존하므로 위에서 아래로 실행하세요. 원본 노트북은 변경하지 않았습니다.</p></details></div><section id="exam"><h2>기억해서 풀어 보기</h2><p>1~5번 자동 확인, 6번 설명 비교, 7번 직접 코딩입니다. 브라우저는 Python을 실행하지 않고 답을 저장·전송하지 않습니다.</p><noscript>JavaScript가 꺼져 있으면 정답·해설을 열어 비교하세요.</noscript><article class="quiz"><h3>01 · 헤드당 크기</h3><p>전체 8차원, 헤드 2개면 head_dim은?</p><form data-answer="4" data-explanation="8/2=4입니다."><label for="q1">답 입력</label><input id="q1" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>4</strong>. 8/2=4입니다.</p></details></article><article class="quiz"><h3>02 · 미래 가리기</h3><pre><code>attn_scores.masked_fill_(mask_bool, ????)</code></pre><form data-answer="-torch.inf" data-explanation="예: 미래 점수를 -∞로 만들면 softmax 뒤 0입니다."><label for="q2">답 입력</label><input id="q2" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>-torch.inf</strong>. 예: 미래 점수를 -∞로 만들면 softmax 뒤 0입니다.</p></details></article><article class="quiz"><h3>03 · 최종 정보</h3><pre><code>context = attn_weights @ ????</code></pre><form data-answer="values" data-explanation="Value 벡터들을 참고 비율대로 섞습니다."><label for="q3">답 입력</label><input id="q3" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>values</strong>. Value 벡터들을 참고 비율대로 섞습니다.</p></details></article><article class="quiz"><h3>04 · 출력 축</h3><p>입력 (2,4,8), d_out=8이면 출력 마지막 차원은?</p><form data-answer="8" data-explanation="통합 구현의 d_out은 최종 전체 출력 차원입니다."><label for="q4">답 입력</label><input id="q4" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>8</strong>. 통합 구현의 d_out은 최종 전체 출력 차원입니다.</p></details></article><article class="quiz"><h3>05 · 미래 누설</h3><p>“미래 토큰만 바꾸면 앞 위치의 출력도 반드시 바뀐다.”</p><form data-answer="X" data-explanation="인과 마스크가 올바르면 앞 위치는 미래 토큰을 참고하지 않습니다."><label><input type="radio" name="answer" value="O"> O</label><label><input type="radio" name="answer" value="X"> X</label><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>X</strong>. 인과 마스크가 올바르면 앞 위치는 미래 토큰을 참고하지 않습니다.</p></details></article><article class="quiz"><h3>06 · 내 말로 설명</h3><p>왜 sqrt(d_out)이 아니라 sqrt(head_dim)으로 점수를 나누나요?</p><label for="q6">나의 설명</label><textarea id="q6" placeholder="내 말로 먼저 설명해 보세요."></textarea><details><summary>작성 후 비교할 해설</summary><p>각 헤드에서 Q·K가 실제 비교하는 벡터의 길이가 head_dim이기 때문입니다. 예: 전체 8·헤드 2면 비교는 각 4차원에서 이뤄집니다.</p></details></article><article class="quiz"><h3>07 · 빈 노트북 실기</h3><p>제출: <code>practice/day-01/gpt-attention-review.ipynb</code>. 파일은 직접 만드세요. 예상 5~10분. 필요한 앞 셀의 클래스를 같은 노트북에서 먼저 정의합니다.</p><p>Attention 클래스 정의 후 shape와 미래 차단을 확인하세요.</p><details><summary>시도 후 확인 코드</summary><pre><code>torch.manual_seed(123)
+att = MultiHeadAttention(8, 8, 4, 0.0, num_heads=2)
+x = torch.randn(2, 4, 8)
+changed = x.clone()
+changed[:, 3] += 50
+assert tuple(att(x).shape) == (2, 4, 8)
+assert torch.allclose(att(x)[:, :3], att(changed)[:, :3], atol=1e-6)</code></pre><p>dropout=0으로 두 번 실행을 안정적으로 비교합니다.</p></details><p>완료 기준: 새 커널 전체 실행, 검사 통과, 핵심 코드 이유 설명. 도움받았다면 기록하고 다음날 자료 없이 재작성합니다.</p></article><div class="controls"><button id="quiz-reset" class="action" type="button">자동 확인 문제 다시 풀기</button></div><p>자동 확인 입력만 초기화하며 설명 메모는 유지합니다.</p></section><footer><p>코드나 이해되지 않는 부분을 에이전트에게 보내 주세요. 다음날 핵심 코드를 자료 없이 다시 작성해 봅니다.</p><p><a href="0017-gpt-data-review.html">이전</a> · <a href="0019-gpt-layernorm-gelu.html">다음</a> · <a href="../class-notes/day-01.md">오늘 노트</a></p><p class="source">교안: <a href="../llm_hands_on/Chapter_4_Excercise_GPT.ipynb">셀 2</a>. 추천 1차 자료: <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html">PyTorch 공식 API</a>. GELU 보충: <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.GELU.html">공식 GELU</a>. 이전 개념: <a href="0009-attention-qkv.html">Q·K·V 수업</a>.</p></footer></main></body></html>

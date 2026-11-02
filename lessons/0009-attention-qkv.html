@@ -1,0 +1,76 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Attention Q·K·V · 누구에게서 무엇을 가져올까?</title><link rel="stylesheet" href="../assets/lesson.css"><link rel="stylesheet" href="../assets/practice.css"><script src="../assets/practice.js" defer></script><script src="../assets/attention-demo.js" defer></script></head>
+<body class="course"><header class="hero"><span class="badge">DAY 01 / ATTENTION 기초 / 핵심 설명 7분 + 연습 10분</span><h1>누구에게서,<br>무엇을 가져올까?</h1><p class="lead"><strong>Q·K로 참고 비율을 정하고,<br>그 비율대로 V의 정보를 섞습니다.</strong></p><p class="muted">목표: 점수(scores), 가중치(weights), 최종 출력(context)을 구분하고 작은 숫자로 계산하기.</p></header>
+<nav><a href="#roles">Q·K·V 뜻</a><a href="#numbers">숫자 예시</a><a href="#demo">직접 바꿔 보기</a><a href="#matrix">행렬과 코드</a><a href="#exam">확인 문제</a></nav><div class="controls"><button class="action" id="exam-toggle" type="button" aria-pressed="false">설명 가리고 시험 보기</button></div><main><div class="reading">
+<div class="callout"><strong>먼저 계산의 이름부터 바로잡기</strong><p>교안에서 <code>Q @ Kᵀ</code>는 <strong>attention scores(점수)</strong>입니다. 이를 스케일링하고 softmax한 것이 <strong>attention weights(가중치)</strong>, 마지막에 <code>weights @ V</code>로 얻는 것이 <strong>context vector 또는 attention output(출력)</strong>입니다.</p><p>따라서 V까지 곱한 결과를 이 교안의 attention score라고 부르는 것은 아닙니다. 자료마다 이름이 조금 다를 수 있어, 수식과 교안 변수명을 함께 보겠습니다.</p></div>
+<section id="roles"><h2>1. 음료를 찾는다고 생각해 보세요</h2><p>“따뜻한 음료를 찾고 싶다”는 요청으로 차와 주스 중 어떤 정보를 가져올지 결정한다고 해 봅시다.</p><table><thead><tr><th>이름</th><th>쉽게 말하면</th><th>음료 예시</th></tr></thead><tbody><tr><td><strong>Q = Query</strong><br>질의</td><td>지금 무엇을 찾는가?</td><td>따뜻한 음료를 찾는 요청</td></tr><tr><td><strong>K = Key</strong><br>키·검색 단서</td><td>나를 어떤 기준으로 찾아주면 되는가?</td><td>차는 따뜻함, 주스는 차가움이라는 단서</td></tr><tr><td><strong>V = Value</strong><br>값·전달할 정보</td><td>참고할 때 실제로 가져올 내용은?</td><td>각 음료가 전달할 정보 벡터</td></tr></tbody></table><p><strong>Q와 K는 ‘매칭’에, V는 ‘정보 전달’에 쓰입니다.</strong> 검색 목록의 제목으로 고르고 본문 내용을 읽는 것과 비슷합니다.</p><p class="muted">이것은 역할을 이해하기 위한 비유입니다. 실제 언어 모델의 벡터 각 축에 사람이 ‘따뜻함’ 같은 뜻을 미리 붙여 놓는 것은 아닙니다. Q·K·V를 만드는 변환은 학습됩니다.</p></section>
+<section id="numbers"><h2>2. 아주 작은 숫자로 끝까지</h2><p>Q 하나가 두 개의 K·V 쌍을 참고하는 예입니다. 계산을 보기 쉽게 숫자를 직접 정했습니다. 마스크와 dropout은 우선 생략합니다.</p>
+<pre><code>지금 요청 q = [1, 0]
+
+차의 단서   k₁ = [2, 0]   전달할 정보 v₁ = [10, 0]
+주스의 단서 k₂ = [0, 2]   전달할 정보 v₂ = [0, 10]</code></pre>
+<h3>① Q와 각 K의 내적 → 매칭 점수</h3><p>내적은 같은 자리끼리 곱해 더하는 계산입니다.</p><pre><code>q · k₁ = 1×2 + 0×0 = 2
+q · k₂ = 1×0 + 0×2 = 0
+
+scores = [2, 0]</code></pre><p>이번 q는 첫 번째 단서와 더 잘 맞아 차의 점수가 높습니다. 이 점수는 음수도 가능하고, 합이 1일 필요도 없습니다. 내적은 벡터 방향뿐 아니라 크기의 영향도 받으므로 단순한 확률이나 정답 점수가 아닙니다.</p>
+<h3>② 크기 조절 + softmax → 참고 비율</h3><pre><code>Q·K의 벡터 길이 d_k = 2
+scaled_scores = [2, 0] / √2 ≈ [1.414, 0]
+
+softmax([1.414, 0]) ≈ [0.804, 0.196]
+                       차 80.4%  주스 19.6%</code></pre><p><strong>softmax</strong>는 점수들을 0~1 사이의 가중치로 바꾸고, 한 질의가 참고하는 후보들에 대해 합이 1이 되게 합니다. 점수 0인 후보도 가중치가 바로 0이 되는 것은 아닙니다.</p><details><summary>왜 80.4%가 될까요?</summary><pre><code>차의 비율 = exp(1.414) / (exp(1.414) + exp(0))
+          ≈ 4.113 / (4.113 + 1)
+          ≈ 0.804</code></pre><p>softmax는 단순히 2를 (2+0)으로 나누는 계산이 아닙니다. √d_k로 나누는 것은 차원이 커질 때 내적 점수의 규모가 지나치게 커지는 것을 완화하기 위한 단계입니다.</p></details>
+<h3>③ 그 비율대로 V를 섞기 → 최종 출력</h3><pre><code>output = 0.804 × [10, 0] + 0.196 × [0, 10]
+       ≈ [8.044, 1.956]</code></pre><p>차의 정보가 약 80.4%, 주스의 정보가 약 19.6% 섞인 <strong>새 정보 벡터</strong>입니다. ‘차가 정답일 확률 80.4%’나 ‘주스 정보를 완전히 무시했다’는 뜻은 아닙니다. 표시값은 반올림했으며 계산에는 더 정밀한 값을 사용합니다.</p>
+<div class="flow" role="img" aria-label="Q와 K의 내적으로 점수 2와 0을 얻고, 스케일링과 softmax로 가중치 0.804와 0.196을 얻은 다음 V를 가중합해 출력 8.044와 1.956을 얻습니다"><div class="flow-box"><b>Q @ Kᵀ</b>scores<br>[2, 0]</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>나누기 + softmax</b>weights<br>[0.804, 0.196]</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>weights @ V</b>output<br>[8.044, 1.956]</div></div></section>
+<section id="demo"><h2>3. Q와 V를 따로 바꿔 보세요</h2><div class="quiz" data-attention-demo><p><label for="query-knob"><strong>Q의 관심:</strong> 차가운 쪽 ← → 따뜻한 쪽</label></p><input id="query-knob" data-query-input type="range" min="0" max="10" value="10"><p>q = <code data-query>[1.0, 0.0]</code></p><p>K는 그대로: 차 [2,0], 주스 [0,2]</p><p><label for="value-knob"><strong>차의 V 첫 번째 값:</strong> 전달할 정보의 크기</label></p><input id="value-knob" data-value-input type="range" min="0" max="20" value="10"><p>v₁ = <code data-value>[10, 0]</code>, v₂ = [0,10]</p><table><tbody><tr><th>① scores</th><td data-raw>2.000, 0.000</td></tr><tr><th>② scaled scores</th><td data-scaled>1.414, 0.000</td></tr><tr><th>③ weights</th><td data-weights>0.804, 0.196</td></tr><tr><th>가중치 합</th><td data-sum>1.000</td></tr><tr><th>④ output</th><td data-output>[8.044, 1.956]</td></tr></tbody></table><p><label>차 비율 <meter min="0" max="1" value="0.804">80.4%</meter></label> <label>주스 비율 <meter min="0" max="1" value="0.196">19.6%</meter></label><p class="muted">브라우저에서 위의 작은 수식만 계산합니다. 실제 토큰을 분석하거나 언어 모델을 실행하지 않습니다.</p></div><ol><li>Q를 가운데로 옮기면 두 가중치가 0.5씩 되는지 보세요.</li><li>Q를 그대로 두고 V만 바꾸면 <strong>점수·가중치는 그대로이고 출력만 달라집니다.</strong></li></ol><p>이 차이가 바로 “Q·K로 누구를 얼마나 참고할지 정하고, V에서 내용을 가져온다”는 뜻입니다.</p></section>
+<section id="matrix"><h2>4. 벡터 여러 개를 모으면 행렬</h2><p>지금까지는 q 하나만 계산했습니다. 문장의 모든 토큰이 각각 q를 가지고 있으면 한꺼번에 Q 행렬로 묶습니다.</p><pre><code># 배치와 head 축을 생략한 예
+Q: (토큰 3개, d_k=2) → (3,2)
+K: (토큰 3개, d_k=2) → (3,2)
+V: (토큰 3개, d_v=4) → (3,4)
+
+Q @ K.T       → (3,3)  # 각 Q와 모든 K 사이의 점수
+softmax(...)  → (3,3)  # 각 행은 해당 Q의 참고 비율
+weights @ V   → (3,4)  # 각 Q가 가져온 정보 벡터</code></pre><p>위 shape 예시는 역할 구분을 위해 d_k와 d_v를 다르게 정했습니다. 교안의 단일 head 클래스는 두 차원을 같은 d_out으로 둡니다. 각 score의 <strong>행은 질문하는 토큰</strong>, <strong>열은 참고할 토큰</strong>입니다. K.T는 K의 행·열을 바꿔 모든 q와 k의 내적을 한 번에 계산하도록 만듭니다.</p><div class="callout"><strong>Value 행렬 V와 최종 출력은 다릅니다.</strong><p>V는 아직 섞기 전의 정보들입니다. <code>weights @ V</code>는 토큰별 V 벡터를 가중합한 결과입니다. 이 곱은 원소별 곱셈이 아니라 <strong>행렬곱</strong>이므로, 곱하고 더하는 가중합을 한 번에 수행합니다.</p></div>
+<h3>PyTorch로 같은 숫자 확인</h3><pre><code>import torch
+
+Q = torch.tensor([[1., 0.]])           # (1,2): q 하나
+K = torch.tensor([[2., 0.], [0., 2.]]) # (2,2): k 두 개
+V = torch.tensor([[10., 0.], [0., 10.]])
+
+scores = Q @ K.T
+weights = torch.softmax(scores / K.shape[-1]**0.5, dim=-1)
+output = weights @ V
+
+print(scores)   # 약 [[2., 0.]]
+print(weights)  # 약 [[0.8044, 0.1956]]
+print(output)   # 약 [[8.0443, 1.9557]]
+assert torch.allclose(weights.sum(dim=-1), torch.ones(1))</code></pre><p><code>dim=-1</code>은 마지막 축, 즉 참고할 key들에 대해 비율을 계산하라는 뜻입니다. Query 하나여도 K·V 후보는 여러 개일 수 있습니다.</p>
+<details><summary>실제 Self-Attention에서 Q·K·V는 어디서 나오나요?</summary><pre><code># 교안 CausalAttention의 forward에 해당
+queries = self.W_query(x)
+keys = self.W_key(x)
+values = self.W_value(x)</code></pre><p>같은 입력 x에 서로 다른 학습 가능한 Linear 변환 3개를 적용합니다. 토큰 ID 정수를 그대로 Q·K·V로 쓰는 것이 아니라, 임베딩 등으로 얻은 입력 벡터에서 만듭니다. 같은 x에서 만들었다고 Q=K=V가 되는 것은 아닙니다.</p><p>Self-Attention은 한 입력 안에서 서로 참고합니다. 예를 들어 “철수는 사과를 먹었다. 그는 배가 불렀다.”에서 ‘그는’ 위치의 Query가 다른 위치의 Key들과 비교되어 그 위치들의 Value를 섞는다고 생각할 수 있습니다. 실제 어떤 비율이 나오는지는 학습된 모델에 따라 다릅니다.</p></details>
+<details><summary>교안에는 mask와 dropout도 있는데요?</summary><p>미래를 가리는 Causal mask는 softmax 전에 미래 점수를 −∞로 만듭니다. 예를 들어 [2,−∞]를 softmax하면 [1,0]이 되어 미래 정보는 섞이지 않습니다.</p><p>교안은 softmax 뒤에 dropout을 적용합니다. 본문의 합이 1이라는 설명은 <strong>dropout 적용 전 softmax 가중치</strong>를 말합니다. 훈련 중 dropout 후의 한 행 합은 항상 1이라고 보장되지 않습니다. 여기서는 핵심 흐름에 집중하려고 두 단계를 생략했습니다.</p></details><p class="source">교안 <a href="../llm_hands_on/Chapter_3_Excercise_Attention.ipynb">Chapter 3 CausalAttention의 forward</a>와 대조했습니다. 공식 수식: <a href="https://arxiv.org/html/1706.03762v7#S3.SS2.SSS1">Attention Is All You Need §3.2.1</a>.</p></section>
+</div>
+<section id="exam"><h2>5. 진짜 이해했는지 확인하기</h2><p>1~5번 자동 확인, 6번 설명, 7번 직접 코딩입니다. 답은 저장·전송되지 않습니다. 출제 확정 문제가 아닌 이해 확인용 연습입니다.</p><noscript>JavaScript가 꺼져 있으면 정답·해설을 열어 비교하세요.</noscript>
+<article class="quiz"><h3>01 · 누가 누구와 비교될까?</h3><pre><code>scores = Q @ ????.T</code></pre><form data-answer="K" data-explanation="Query와 Key를 비교해 점수를 만듭니다. 예: [1,0]·[2,0]=2입니다."><label for="q1">행렬 이름</label><input id="q1" name="answer" type="text" autocomplete="off"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p>K. Q·K는 비교에, V는 전달할 내용에 사용합니다.</p></details></article>
+<article class="quiz"><h3>02 · 점수를 참고 비율로</h3><pre><code>weights = torch.????(scores / K.shape[-1]**0.5, dim=-1)</code></pre><form data-answer="softmax" data-explanation="softmax가 점수를 가중치로 바꿉니다. 예: [0,0]이면 [0.5,0.5]입니다."><label for="q2">함수 이름</label><input id="q2" name="answer" type="text" autocomplete="off"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p>softmax. 원래 점수 자체가 비율인 것은 아닙니다.</p></details></article>
+<article class="quiz"><h3>03 · 최종 출력에 섞을 정보</h3><pre><code>output = weights @ ????</code></pre><form data-answer="V" data-explanation="Value의 정보들을 비율대로 섞습니다. 예: 0.5×[10,0]+0.5×[0,10]=[5,5]입니다."><label for="q3">행렬 이름</label><input id="q3" name="answer" type="text" autocomplete="off"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p>V. 결과는 최종 출력이며 이 교안의 scores가 아닙니다.</p></details></article>
+<article class="quiz"><h3>04 · V만 바꾸면?</h3><p>“Q와 K가 같아도 V가 바뀌면 attention weights는 반드시 바뀐다.”</p><form data-answer="X" data-explanation="이 수식에서 weights는 Q와 K로 결정됩니다. V만 바꾸면 출력은 달라질 수 있지만 weights는 그대로입니다."><label><input type="radio" name="answer" value="O"> O</label><label><input type="radio" name="answer" value="X"> X</label><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p>X. 예: 비율 [0.5,0.5]에서 v₁을 [10,0]에서 [20,0]으로 바꾸면 출력이 [5,5]에서 [10,5]가 됩니다. 비율은 그대로입니다.</p></details></article>
+<article class="quiz"><h3>05 · 손으로 가중합</h3><p>weights=[0.75,0.25], v₁=[8,0], v₂=[0,4]입니다. 출력 벡터의 <strong>첫 번째 값</strong>은 얼마인가요?</p><form data-answer="6|6.0" data-explanation="0.75×8 + 0.25×0 = 6입니다. 전체 출력은 [6,1]입니다."><label for="q5">숫자 하나</label><input id="q5" name="answer" type="text" autocomplete="off"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p>6. weights @ V는 각 Value 벡터에 가중치를 곱해 더하는 것입니다.</p></details></article>
+<article class="quiz"><h3>06 · 내 말로 설명하기</h3><p>Q·K·V 역할을 한 문장씩 말하고 scores, weights, output 순서를 적어 보세요.</p><label for="q6">나의 설명</label><textarea id="q6" placeholder="예시를 하나 들어 설명해 보세요."></textarea><details><summary>작성 후 비교할 해설</summary><p>Q는 찾을 기준, K는 비교할 단서, V는 가져올 정보입니다. 예: 따뜻한 음료를 찾는 Q가 차·주스의 K와 비교되고, 나온 비율대로 음료의 V를 섞습니다. 순서는 scores → 스케일링·softmax → weights → V 가중합 → output입니다.</p></details></article>
+<article class="quiz"><h3>07 · 빈 노트북에서 세 줄 구현</h3><p>제출 경로: <code>practice/day-01/attention-qkv.ipynb</code>. 폴더와 파일을 직접 만드세요. 예상 5분. PyTorch가 설치된 환경에서 설명을 닫고 진행합니다.</p><ol><li>본문과 같은 Q=[1,0], K=[[2,0],[0,2]], V=[[10,0],[0,10]]을 실수 텐서로 만듭니다. Q는 (1,2)로 만듭니다.</li><li>scores·weights·output을 계산하고 출력합니다.</li><li>softmax 가중치 합이 1인지 검사합니다.</li><li>Q를 [0,0]으로 바꿔 output이 [5,5]가 되는지 검사하고 이유를 설명합니다.</li></ol><details><summary>시도 후 모범 코드</summary><pre><code>import torch
+Q = torch.tensor([[1., 0.]])
+K = torch.tensor([[2., 0.], [0., 2.]])
+V = torch.tensor([[10., 0.], [0., 10.]])
+scores = Q @ K.T
+weights = torch.softmax(scores / K.shape[-1]**0.5, dim=-1)
+output = weights @ V
+print(scores, weights, output)
+assert torch.allclose(weights.sum(dim=-1), torch.ones(1))
+
+Q = torch.zeros(1, 2)
+weights_equal = torch.softmax((Q @ K.T) / 2**0.5, dim=-1)
+output_equal = weights_equal @ V
+assert torch.allclose(output_equal, torch.tensor([[5., 5.]]))</code></pre><p>Q가 0이면 두 점수가 같아 비율이 0.5씩입니다. 완료 기준: 새 커널 전체 실행 성공 + 검사 통과 + 세 단계의 이름 설명. 도움받았다면 다음날 자료 없이 다시 작성합니다.</p></details></article>
+<div class="controls"><button class="action" id="quiz-reset" type="button">자동 확인 문제 다시 풀기</button></div><p>1~5번을 초기화하며 6번 메모는 유지합니다.</p></section>
+<footer><h2>내일 1분 복습</h2><p>Q·K·V의 역할을 말하고 <code>scores → weights → output</code> 세 줄을 자료 없이 적어 보세요. 막히는 부분은 에이전트에게 질문하세요.</p><p><a href="../reference/attention-qkv.html">한 장 요약</a> · <a href="index.html">수업 목차</a> · <a href="../class-notes/day-01.md">오늘 필기</a></p><p class="source">추천 원문: <a href="https://arxiv.org/html/1706.03762v7#S3.SS2.SSS1">Attention Is All You Need §3.2.1</a>. 교안 근거는 Chapter 3 CausalAttention 코드이며 숫자·음료는 이해를 위해 구성한 예입니다.</p></footer></main></body></html>

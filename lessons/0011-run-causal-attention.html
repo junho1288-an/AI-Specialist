@@ -1,0 +1,40 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Chapter 3 · 셀 2 · 문장 배치에 단일 헤드 적용</title><link rel="stylesheet" href="../assets/lesson.css"><link rel="stylesheet" href="../assets/practice.css"><script src="../assets/practice.js" defer></script><script src="../assets/causal-mask-demo.js" defer></script></head><body class="course"><header class="hero"><span class="badge">CHAPTER 3 / 전체 셀 순서 2 / 설명 7분 + 연습 10분</span><h1>셀 2 · 문장 배치에 단일 헤드 적용</h1><p class="lead">batch 축·토큰 축·벡터 축을 구분하고 ca(batch)를 실행하기</p><p class="muted">기준: Chapter_3_Excercise_Attention.ipynb. 번호는 실행 횟수가 아니라 파일 위에서부터 센 셀 순서입니다. 자체 연습 문제이며 출제 여부는 강사 공지를 따릅니다.</p></header><nav><a href="chapter-3.html">Chapter 3 목차</a><a href="0010-causal-attention.html">이전 수업</a><a href="#exam">확인 문제</a><a href="../reference/chapter-3-attention.html">복습 카드</a></nav><div class="controls"><button id="exam-toggle" class="action" type="button" aria-pressed="false">설명 가리고 시험 보기</button></div><main><div class="reading"><h2>1. 여섯 토큰을 두 문장으로 쌓기</h2><p>inputs의 각 행은 단어에 대응시킨 설명용 입력 벡터입니다. 이 셀에서 BPE나 학습된 임베딩을 실제로 계산한 것은 아닙니다.</p><div class="flow"><div class="flow-box"><b>inputs</b>토큰 6개 × 벡터 3차원<br>(6,3)</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>stack(dim=0)</b>동일 문장 2개<br>(2,6,3)</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>ca(batch)</b>각 토큰에 새 벡터<br>(2,6,2)</div></div>
+<p><strong>예시:</strong> 두 장의 동일한 표를 새 축으로 쌓는 것이 stack입니다. cat으로 토큰 축을 이어 (12,3)으로 만드는 것과 다릅니다.</p>
+<h2>2. 빈칸 정답은 ca</h2><pre><code>ca = CausalAttention(d_in, d_out, context_length, 0.0)
+context_vecs = ca(batch)</code></pre>
+<p>ca는 바로 위에서 만든 모듈 객체입니다. <code>ca(batch)</code>가 forward를 실행합니다. nn.Module의 호출 기능을 사용하므로 <code>ca.forward(batch)</code>를 직접 호출하는 것보다 일반적인 방식입니다.</p>
+<table><thead><tr><th>코드</th><th>값·뜻</th></tr></thead><tbody><tr><td>inputs.shape[1]</td><td>3: 한 토큰 벡터의 크기</td></tr><tr><td>batch.shape[1]</td><td>6: 현재 토큰 개수</td></tr><tr><td>context_length</td><td>6: 이번 예시에서는 최대 길이를 현재 길이와 같게 설정</td></tr><tr><td>d_out</td><td>2: 출력 벡터 크기</td></tr><tr><td>dropout=0.0</td><td>무작위 가중치 제거 없음</td></tr></tbody></table>
+<h2>3. 같은 배치 두 장이면 왜 출력도 같을까?</h2><p>동일한 입력에 동일한 파라미터를 적용하고 dropout=0이므로 두 배치 항목의 출력이 같습니다. batch 축끼리 Attention을 계산하는 것이 아니라 <strong>각 문장 안의 토큰들</strong>을 비교합니다.</p><p>첫 번째 토큰은 자신만 볼 수 있으므로 해당 가중치가 1입니다. 따라서 이 단일 헤드 셀에서는 첫 위치의 문맥 벡터가 첫 위치의 Value와 같습니다. Q·K가 사라진 게 아니라 참고할 후보가 하나뿐인 결과입니다.</p><div class="callout">저장된 출력과 현재 코드 모두 shape는 (2,6,2)입니다. 숫자 자체를 외우기보다 입력·출력의 세 축을 읽는 연습을 하세요.</div><details><summary>시도 후 셀 2 전체 완성 코드 보기</summary><pre data-source-cell="2"><code>import torch
+
+inputs = torch.tensor(
+  [[0.43, 0.15, 0.89], # Your     (x^1)
+   [0.55, 0.87, 0.66], # journey  (x^2)
+   [0.57, 0.85, 0.64], # starts   (x^3)
+   [0.22, 0.58, 0.33], # with     (x^4)
+   [0.77, 0.25, 0.10], # one      (x^5)
+   [0.05, 0.80, 0.55]] # step     (x^6)
+)
+
+d_in = inputs.shape[1]   # 입력 차원 (d=3)
+d_out = 2                # Q, K, V의 출력 차원 (d=2)
+
+batch = torch.stack((inputs, inputs), dim=0)
+torch.manual_seed(123)
+
+context_length = batch.shape[1]
+
+print(&quot;context_length:&quot;, context_length)
+
+ca = CausalAttention(d_in, d_out, context_length, 0.0)
+context_vecs = ca(batch)
+
+print(context_vecs)
+print(&quot;context_vecs.shape:&quot;, context_vecs.shape)</code></pre><p>원본 셀의 실행 코드에 정답만 채우고 주석을 줄인 버전입니다. 이전 셀의 import·클래스·batch에 의존하므로 순서대로 실행하세요. 원본 노트북은 수정하지 않았습니다.</p></details></div><section id="exam"><h2>직접 확인하기</h2><p>1~5번 자동 확인, 6번 설명 비교, 7번 직접 코딩입니다. 브라우저는 Python을 실행하지 않고 답을 저장·전송하지 않습니다.</p><noscript>JavaScript가 꺼져 있으면 정답·해설을 열어 비교하세요.</noscript><article class="quiz"><h3>01 · 호출할 객체</h3><pre><code>context_vecs = ????(batch)</code></pre><form data-answer="ca" data-explanation="예: ca는 CausalAttention으로 만든 객체이고 ca(batch)가 forward를 실행합니다."><label for="q1">답 입력</label><input id="q1" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>ca</strong>. 예: ca는 CausalAttention으로 만든 객체이고 ca(batch)가 forward를 실행합니다.</p></details></article><article class="quiz"><h3>02 · 배치 크기</h3><p>batch.shape=(2,6,3)에서 문장 수는?</p><form data-answer="2" data-explanation="예: 동일한 inputs를 두 번 stack했으므로 2개입니다."><label for="q2">답 입력</label><input id="q2" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>2</strong>. 예: 동일한 inputs를 두 번 stack했으므로 2개입니다.</p></details></article><article class="quiz"><h3>03 · 문장 안 토큰 수</h3><p>batch.shape=(2,6,3)에서 토큰 수는?</p><form data-answer="6" data-explanation="가운데 축 6이 한 문장 안의 토큰 수입니다."><label for="q3">답 입력</label><input id="q3" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>6</strong>. 가운데 축 6이 한 문장 안의 토큰 수입니다.</p></details></article><article class="quiz"><h3>04 · 출력 벡터 길이</h3><p>d_out=2일 때 context_vecs의 마지막 축은?</p><form data-answer="2" data-explanation="입력은 (2,6,3)이고 출력은 (2,6,2)입니다."><label for="q4">답 입력</label><input id="q4" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>2</strong>. 입력은 (2,6,3)이고 출력은 (2,6,2)입니다.</p></details></article><article class="quiz"><h3>05 · 문장 간 Attention</h3><p>“이 코드에서 0번 문장의 토큰은 1번 문장의 토큰을 참고한다.”</p><form data-answer="X" data-explanation="행렬곱은 각 batch 항목 안에서 수행되어 문장 간 정보가 섞이지 않습니다."><label><input type="radio" name="answer" value="O"> O</label><label><input type="radio" name="answer" value="X"> X</label><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>X</strong>. 행렬곱은 각 batch 항목 안에서 수행되어 문장 간 정보가 섞이지 않습니다.</p></details></article><article class="quiz"><h3>06 · 내 말로 설명</h3><p>첫 토큰의 문맥 벡터가 왜 그 토큰의 Value와 같을까요?</p><label for="q6">나의 설명</label><textarea id="q6" placeholder="먼저 내 말로 설명해 보세요."></textarea><details><summary>작성 후 비교할 해설</summary><p>예: 첫 토큰에서 미래는 모두 가려져 자기 위치의 가중치만 1이고 나머지는 0입니다. 이 단일 헤드에는 추가 out_proj가 없어 그대로 해당 Value가 됩니다.</p></details></article><article class="quiz"><h3>07 · 직접 코딩</h3><p>제출: <code>practice/day-01/run-causal.ipynb</code>. 직접 파일을 만드세요. 예상 5~10분. 앞서 배운 클래스를 같은 노트북에서 먼저 정의하고 시작합니다.</p><p>첫 셀을 정의한 뒤 새로운 입력 (5,3)을 두 번 쌓아 (2,5,3)을 만들고 ca(3→2)를 적용하세요.</p><details><summary>시도 후 확인 코드</summary><pre><code>torch.manual_seed(123)
+inputs = torch.randn(5, 3)
+batch = torch.stack((inputs, inputs), dim=0)
+ca = CausalAttention(3, 2, context_length=5, dropout=0.0)
+result = ca(batch)
+assert tuple(batch.shape) == (2, 5, 3)
+assert tuple(result.shape) == (2, 5, 2)
+assert torch.allclose(result[0], result[1])
+assert torch.allclose(result[:, 0], ca.W_value(batch)[:, 0])</code></pre><p>동일한 두 입력은 동일한 출력을 가지며 첫 위치는 자기 Value만 반영합니다.</p></details><p>완료 기준: 새 커널 전체 실행, 검사 통과, 코드의 이유 설명. 답을 보았다면 도움받은 사실을 기록하고 다음날 다시 작성합니다.</p></article><div class="controls"><button id="quiz-reset" class="action" type="button">자동 확인 문제 다시 풀기</button></div><p>자동 확인 입력만 초기화하며 설명 메모는 유지합니다.</p></section><footer><p>이해되지 않는 부분이나 작성한 코드를 에이전트에게 보내 주세요. 설명을 읽은 것과 독립 구현의 숙달은 구분합니다.</p><p><a href="0010-causal-attention.html">이전</a> · <a href="0012-multihead-wrapper.html">다음</a> · <a href="../class-notes/day-01.md">오늘 노트</a></p><p class="source">교안: <a href="../llm_hands_on/Chapter_3_Excercise_Attention.ipynb">셀 2</a>. 추천 공식 자료: <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html">PyTorch Module</a>, <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.ModuleList.html">ModuleList</a>. 수식 복습: <a href="0009-attention-qkv.html">Q·K·V 기초 수업</a>. </p></footer></main></body></html>

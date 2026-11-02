@@ -1,0 +1,70 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Chapter 3 · 셀 1 · CausalAttention 구현</title><link rel="stylesheet" href="../assets/lesson.css"><link rel="stylesheet" href="../assets/practice.css"><script src="../assets/practice.js" defer></script><script src="../assets/causal-mask-demo.js" defer></script></head><body class="course"><header class="hero"><span class="badge">CHAPTER 3 / 전체 셀 순서 1 / 설명 7분 + 연습 10분</span><h1>셀 1 · CausalAttention 구현</h1><p class="lead">미래를 가린 뒤 Q·K·V로 문맥 벡터를 만드는 클래스</p><p class="muted">기준: Chapter_3_Excercise_Attention.ipynb. 번호는 실행 횟수가 아니라 파일 위에서부터 센 셀 순서입니다. 자체 연습 문제이며 출제 여부는 강사 공지를 따릅니다.</p></header><nav><a href="chapter-3.html">Chapter 3 목차</a><a href="0009-attention-qkv.html">이전 수업</a><a href="#exam">확인 문제</a><a href="../reference/chapter-3-attention.html">복습 카드</a></nav><div class="controls"><button id="exam-toggle" class="action" type="button" aria-pressed="false">설명 가리고 시험 보기</button></div><main><div class="reading"><h2>1. 무엇을 만드는 셀인가요?</h2><p><strong>Causal(인과적)</strong>은 이 코드에서 현재 위치가 미래 토큰을 참고하지 못하게 한다는 뜻입니다. <code>nn.Module</code>을 상속해 학습 가능한 레이어와 forward 계산을 묶습니다. <code>super().__init__()</code>으로 부모 모듈을 초기화합니다.</p><div class="flow"><div class="flow-box"><b>입력 x</b>(B,T,d_in)</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>Linear 3개</b>Q·K·V 각각 (B,T,d_out)</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>마스크 + softmax</b>가중치 (B,T,T)</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>가중치 @ V</b>문맥 (B,T,d_out)</div></div>
+<p><strong>예시:</strong> “나는 밥을 먹는다”에서 ‘밥을’ 위치는 ‘나는’, ‘밥을’까지 참고할 수 있고, 뒤의 ‘먹는다’는 보지 못합니다. 실제 분리는 토크나이저에 따라 달라지므로 단어 단위로 단순화한 예입니다.</p>
+<h2>2. 빈칸 20곳 정답</h2><table><thead><tr><th>부분</th><th>채울 코드</th></tr></thead><tbody><tr><td>Q·K·V 레이어</td><td><code>nn.Linear(d_in, d_out, bias=qkv_bias)</code> 세 번</td></tr><tr><td>keys</td><td><code>self.W_key(x)</code></td></tr><tr><td>queries</td><td><code>self.W_query(x)</code></td></tr><tr><td>values</td><td><code>self.W_value(x)</code></td></tr><tr><td>scores</td><td><code>queries @ keys.transpose(1,2)</code></td></tr><tr><td>가릴 값</td><td><code>-torch.inf</code></td></tr><tr><td>가중치 함수</td><td><code>torch.softmax</code></td></tr><tr><td>최종 곱</td><td><code>attn_weights @ values</code></td></tr></tbody></table>
+<h2>3. 왜 -∞를 넣나요?</h2><pre><code># True인 미래 위치를 가립니다. 행은 Query, 열은 Key입니다.
+mask = [[0,1,1,1],
+        [0,0,1,1],
+        [0,0,0,1],
+        [0,0,0,0]]
+# 예: 둘째 행 점수가 모두 0이면
+# [0,0,-inf,-inf] → softmax → [0.5,0.5,0,0]</code></pre>
+<p><code>torch.triu(..., diagonal=1)</code>로 대각선 위만 표시합니다. 자기 위치는 허용합니다. 0으로 덮으면 softmax에서 가중치가 0이 되지 않으므로 -∞를 사용합니다.</p>
+<div class="quiz" data-causal-demo><h3>어느 위치까지 볼 수 있나요?</h3><label for="query-index">질의 위치: <strong data-query-index>0</strong></label><input id="query-index" type="range" min="0" max="3" value="0"><p>참고할 수 있는 위치: <code data-visible>0</code></p><p>허용된 점수가 모두 0인 예의 가중치: <code data-row>[1.000, 0.000, 0.000, 0.000]</code></p><p class="muted">첫 위치를 0으로 셉니다. 실제 모델 점수가 아닌 마스크 원리의 시각화입니다. 표시값은 반올림되어 합에 오차가 보일 수 있습니다.</p></div>
+<h2>4. 나머지 중요한 줄</h2><ul><li><code>register_buffer</code>: 마스크를 모듈 상태에 등록합니다. 파라미터로 학습하지 않으며, 기본적으로 state_dict에 저장되고 모듈과 함께 장치가 이동합니다.</li><li><code>[:num_tokens,:num_tokens]</code>: 최대 길이 마스크에서 현재 입력 길이만 사용합니다. 입력 길이는 context_length 이하여야 합니다.</li><li><code>/ keys.shape[-1]**0.5</code>: Q·K 차원의 제곱근으로 점수 규모를 조절합니다.</li><li><code>dim=-1</code>: 각 Query가 참고할 Key들에 대해 softmax합니다. dropout 전 각 행의 합이 1입니다.</li><li><code>self.dropout</code>: 훈련 시 가중치 일부를 제거·재조정합니다. 적용 후 행 합이 항상 1인 것은 아닙니다. p=0 또는 eval 모드에서는 비활성입니다.</li></ul><details><summary>시도 후 셀 1 전체 완성 코드 보기</summary><pre data-source-cell="1"><code>import torch
+import torch.nn as nn
+
+class CausalAttention(nn.Module):
+    def __init__(self, d_in, d_out, context_length, dropout, qkv_bias=False):
+        &quot;&quot;&quot;
+        Args:
+            d_in: 입력 벡터의 차원 크기
+            d_out: 출력(및 쿼리/키/밸류) 벡터의 차원 크기
+            context_length: 모델이 한 번에 처리할 수 있는 최대 문맥 길이 (토큰 수)
+            dropout: 드롭아웃 확률
+            qkv_bias: 선형 레이어에 편향(bias)을 사용할지 여부
+        &quot;&quot;&quot;
+        super().__init__()
+
+        self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
+        self.W_key   = nn.Linear(d_in, d_out, bias=qkv_bias)
+        self.W_value = nn.Linear(d_in, d_out, bias=qkv_bias)
+
+        self.dropout = nn.Dropout(dropout)
+
+        self.register_buffer(
+            'mask',
+            torch.triu(torch.ones(context_length, context_length), diagonal=1)
+        )
+
+    def forward(self, x):
+        b, num_tokens, d_in = x.shape
+
+        keys = self.W_key(x)        # Shape: [b, num_tokens, d_out]
+        queries = self.W_query(x)   # Shape: [b, num_tokens, d_out]
+        values = self.W_value(x)    # Shape: [b, num_tokens, d_out]
+
+        attn_scores = queries @ keys.transpose(1, 2)
+
+        attn_scores.masked_fill_(
+            self.mask.bool()[:num_tokens, :num_tokens],
+            -torch.inf
+        )
+
+        attn_weights = torch.softmax(
+            attn_scores / keys.shape[-1]**0.5, dim=-1
+        )
+
+        attn_weights = self.dropout(attn_weights)
+
+        context_vec = attn_weights @ values
+
+        return context_vec</code></pre><p>원본 셀의 실행 코드에 정답만 채우고 주석을 줄인 버전입니다. 이전 셀의 import·클래스·batch에 의존하므로 순서대로 실행하세요. 원본 노트북은 수정하지 않았습니다.</p></details></div><section id="exam"><h2>직접 확인하기</h2><p>1~5번 자동 확인, 6번 설명 비교, 7번 직접 코딩입니다. 브라우저는 Python을 실행하지 않고 답을 저장·전송하지 않습니다.</p><noscript>JavaScript가 꺼져 있으면 정답·해설을 열어 비교하세요.</noscript><article class="quiz"><h3>01 · 투영 레이어</h3><pre><code>self.W_query = nn.????(d_in, d_out, bias=qkv_bias)</code></pre><form data-answer="Linear" data-explanation="예: Linear(3,2)는 토큰별 벡터 3개 값을 2개 값으로 변환합니다."><label for="q1">답 입력</label><input id="q1" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>Linear</strong>. 예: Linear(3,2)는 토큰별 벡터 3개 값을 2개 값으로 변환합니다.</p></details></article><article class="quiz"><h3>02 · 미래 차단</h3><pre><code>attn_scores.masked_fill_(mask_bool, ????)</code></pre><form data-answer="-torch.inf" data-explanation="예: [0,-inf]를 softmax하면 [1,0]입니다."><label for="q2">답 입력</label><input id="q2" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>-torch.inf</strong>. 예: [0,-inf]를 softmax하면 [1,0]입니다.</p></details></article><article class="quiz"><h3>03 · 점수를 비율로</h3><pre><code>attn_weights = torch.????(scores / d_out**0.5, dim=-1)</code></pre><form data-answer="softmax" data-explanation="예: [0,0]은 [0.5,0.5]로 바뀝니다."><label for="q3">답 입력</label><input id="q3" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>softmax</strong>. 예: [0,0]은 [0.5,0.5]로 바뀝니다.</p></details></article><article class="quiz"><h3>04 · 마지막에 섞는 정보</h3><pre><code>context_vec = attn_weights @ ????</code></pre><form data-answer="values" data-explanation="예: 같은 비율 [0.5,0.5]로 두 Value를 가중합합니다."><label for="q4">답 입력</label><input id="q4" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>values</strong>. 예: 같은 비율 [0.5,0.5]로 두 Value를 가중합합니다.</p></details></article><article class="quiz"><h3>05 · 마스크의 대각선</h3><p>“이 코드에서는 자기 위치도 가린다.”</p><form data-answer="X" data-explanation="diagonal=1이므로 자기 위치는 허용하고 그 뒤 위치만 가립니다."><label><input type="radio" name="answer" value="O"> O</label><label><input type="radio" name="answer" value="X"> X</label><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>X</strong>. diagonal=1이므로 자기 위치는 허용하고 그 뒤 위치만 가립니다.</p></details></article><article class="quiz"><h3>06 · 내 말로 설명</h3><p>미래 점수를 0이 아닌 -∞로 덮는 이유와 dropout 전·후 가중치 합의 차이를 설명하세요.</p><label for="q6">나의 설명</label><textarea id="q6" placeholder="먼저 내 말로 설명해 보세요."></textarea><details><summary>작성 후 비교할 해설</summary><p>예: [0,0]을 softmax하면 둘 다 0.5입니다. 미래 점수를 -∞로 바꾸면 미래 가중치가 0입니다. 합이 1이라는 성질은 dropout 전 softmax의 결과에 해당합니다.</p></details></article><article class="quiz"><h3>07 · 직접 코딩</h3><p>제출: <code>practice/day-01/causal-attention.ipynb</code>. 직접 파일을 만드세요. 예상 5~10분. 앞서 배운 클래스를 같은 노트북에서 먼저 정의하고 시작합니다.</p><p>완성 코드를 본 뒤 닫고 핵심 forward를 다시 작성하세요. 클래스 정의 후 아래 검사로 미래 정보가 앞 위치에 영향을 주지 않는지 확인합니다.</p><details><summary>시도 후 확인 코드</summary><pre><code>torch.manual_seed(123)
+ca = CausalAttention(3, 2, context_length=4, dropout=0.0)
+x = torch.randn(1, 4, 3)
+changed = x.clone()
+changed[:, 3, :] += 100
+before, after = ca(x), ca(changed)
+assert tuple(before.shape) == (1, 4, 2)
+assert torch.allclose(before[:, :3], after[:, :3], atol=1e-6)
+assert &quot;mask&quot; in ca.state_dict()
+assert &quot;mask&quot; not in dict(ca.named_parameters())</code></pre><p>마지막 토큰만 바꿨으므로 앞의 세 위치 출력은 변하지 않아야 합니다. 부동소수점 비교에는 오차를 허용합니다.</p></details><p>완료 기준: 새 커널 전체 실행, 검사 통과, 코드의 이유 설명. 답을 보았다면 도움받은 사실을 기록하고 다음날 다시 작성합니다.</p></article><div class="controls"><button id="quiz-reset" class="action" type="button">자동 확인 문제 다시 풀기</button></div><p>자동 확인 입력만 초기화하며 설명 메모는 유지합니다.</p></section><footer><p>이해되지 않는 부분이나 작성한 코드를 에이전트에게 보내 주세요. 설명을 읽은 것과 독립 구현의 숙달은 구분합니다.</p><p><a href="0009-attention-qkv.html">이전</a> · <a href="0011-run-causal-attention.html">다음</a> · <a href="../class-notes/day-01.md">오늘 노트</a></p><p class="source">교안: <a href="../llm_hands_on/Chapter_3_Excercise_Attention.ipynb">셀 1</a>. 추천 공식 자료: <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html">PyTorch Module</a>, <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.ModuleList.html">ModuleList</a>. 수식 복습: <a href="0009-attention-qkv.html">Q·K·V 기초 수업</a>. </p></footer></main></body></html>

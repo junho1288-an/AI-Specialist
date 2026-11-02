@@ -1,0 +1,89 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Day 1 · GPTDatasetV1 이해하기</title><link rel="stylesheet" href="../assets/lesson.css"><link rel="stylesheet" href="../assets/practice.css"><script src="../assets/practice.js" defer></script><script src="../assets/dataset-windows.js" defer></script></head>
+<body class="course"><header class="hero"><span class="badge">DAY 01 / 세 번째 실습 블록 / 설명 8분 + 연습 10분</span><h1>긴 글을 학습용 카드로</h1><p class="lead"><code>GPTDatasetV1</code>은 긴 토큰 줄에서<br>‘입력과 다음 토큰 정답’ 카드를 여러 장 만듭니다.</p><p class="muted">목표: 샘플을 만드는 __init__, 개수를 알려주는 __len__, 한 쌍을 꺼내는 __getitem__을 설명하고 작성하기.</p></header>
+<nav><a href="#idea">클래스의 역할</a><a href="#windows">움직이는 창</a><a href="#code">완성 코드</a><a href="#exam">시험 문제</a><a href="0003-text-to-next-token.html">이전 수업</a></nav><div class="controls"><button class="action" id="exam-toggle" type="button" aria-pressed="false">설명 가리고 시험 보기</button></div>
+<main><div class="reading">
+<section id="idea"><h2>1. Dataset은 ‘샘플 보관함’입니다</h2><p><strong>GPT = Generative Pre-trained Transformer(생성형 사전학습 트랜스포머)</strong>. 여기서 <code>GPTDatasetV1</code>은 교안에서 붙인 클래스 이름이며, GPT 모델 자체가 아니라 그 모델에 줄 데이터를 준비합니다. <code>V1</code>은 첫 번째 버전이라는 이름입니다.</p><div class="flow" role="img" aria-label="긴 글을 토큰 ID로 바꾸고 Dataset에 여러 입력 정답 쌍으로 저장한 뒤 번호로 하나를 꺼냅니다"><div class="flow-box"><b>긴 글</b>txt</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>토큰 ID</b>tokenizer.encode</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>샘플 보관함</b>여러 x·y 쌍</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>dataset[idx]</b>한 쌍 꺼내기</div></div>
+<p><code>class GPTDatasetV1(Dataset):</code>은 PyTorch의 <code>Dataset</code>을 상속해 우리 데이터셋의 동작을 정의한다는 뜻입니다. <code>class</code> 셀을 실행하면 설계가 정의되고, <code>dataset = GPTDatasetV1(...)</code>을 실행할 때 샘플이 만들어집니다.</p><table><thead><tr><th>메서드</th><th>언제 쓰일까?</th><th>쉬운 역할</th></tr></thead><tbody><tr><td><code>__init__</code></td><td><code>GPTDatasetV1(...)</code></td><td>카드들을 만들어 보관</td></tr><tr><td><code>__len__</code></td><td><code>len(dataset)</code></td><td>카드가 몇 장인지 반환</td></tr><tr><td><code>__getitem__</code></td><td><code>dataset[0]</code></td><td>0번 카드의 입력·정답 반환</td></tr></tbody></table><p><strong>예시:</strong> 카드가 3장이라면 <code>len(dataset)</code>은 3이고, <code>dataset[1]</code>은 두 번째 카드입니다. <code>self</code>는 그 보관함 객체 자신을 가리킵니다. <code>self.input_ids</code>처럼 붙여 저장해야 나중에 다른 메서드에서도 꺼낼 수 있습니다.</p><p class="source"><a href="https://docs.pytorch.org/docs/stable/data.html#map-style-datasets">PyTorch 공식: map-style Dataset</a></p></section>
+<section id="windows"><h2>2. max_length는 폭, stride는 이동 간격</h2><p><strong>max_length</strong>는 샘플 하나의 토큰 개수, <strong>stride</strong>는 다음 샘플의 시작점으로 움직이는 칸 수입니다. 두 값 모두 양의 정수를 사용합니다.</p><pre><code>token_ids = [10,20,30,40,50,60,70,80,90]
+max_length = 4
+stride = 2
+
+for i in range(0, len(token_ids) - max_length, stride):
+    input_chunk = token_ids[i:i + max_length]
+    target_chunk = token_ids[i + 1:i + max_length + 1]</code></pre>
+<table><caption>샘플 길이 4, 시작점을 2칸씩 이동한 예시</caption><thead><tr><th>샘플 번호 idx</th><th>원본 시작점 i</th><th>입력 x</th><th>정답 y</th></tr></thead><tbody><tr><td>0</td><td>0</td><td>[10,20,30,40]</td><td>[20,30,40,50]</td></tr><tr><td>1</td><td>2</td><td>[30,40,50,60]</td><td>[40,50,60,70]</td></tr><tr><td>2</td><td>4</td><td>[50,60,70,80]</td><td>[60,70,80,90]</td></tr></tbody></table>
+<div class="callout"><strong>stride와 정답의 +1은 다른 역할입니다.</strong><br>stride는 <em>샘플과 샘플 사이</em>의 시작 간격입니다. 정답의 +1은 <em>같은 샘플 안에서</em> 다음 토큰을 가리킵니다. stride가 2여도 정답은 한 칸 뒤입니다.</div>
+<div class="quiz" data-dataset-windows data-tokens="[10,20,30,40,50,60,70,80,90]"><h3>창의 폭과 이동 간격을 바꿔 보세요</h3><p><label for="window-length">max_length: <strong data-length>4</strong></label> <input id="window-length" data-length-input type="range" min="1" max="6" value="4"></p><p><label for="window-stride">stride: <strong data-stride>2</strong></label> <input id="window-stride" data-stride-input type="range" min="1" max="5" value="2"></p><p>원본 시작점 i: <code data-starts>[0,2,4]</code> · 샘플 수: <strong data-count>3</strong></p><table><thead><tr><th>idx</th><th>i</th><th>x</th><th>y</th></tr></thead><tbody><tr><td>0</td><td>0</td><td>[10,20,30,40]</td><td>[20,30,40,50]</td></tr><tr><td>1</td><td>2</td><td>[30,40,50,60]</td><td>[40,50,60,70]</td></tr><tr><td>2</td><td>4</td><td>[50,60,70,80]</td><td>[60,70,80,90]</td></tr></tbody></table><p class="muted">고정된 연습용 토큰 ID에 교안의 range·슬라이싱 규칙을 적용한 그림입니다. Python·PyTorch를 실행하는 것은 아닙니다.</p></div>
+<h3>왜 range의 끝은 전체 길이 − max_length일까요?</h3><p>원본이 9토큰, max_length가 4라면 <code>range(0, 5, 2)</code>이므로 시작점은 0·2·4입니다. 끝값 5는 포함하지 않습니다. 입력 4개뿐 아니라 그다음 정답 토큰까지 필요하기 때문입니다.</p>
+</section>
+<section id="code"><h2>3. 완성 코드에 역할을 붙여 보기</h2><pre><code>import torch
+from torch.utils.data import Dataset
+
+class GPTDatasetV1(Dataset):
+    def __init__(self, txt, tokenizer, max_length, stride):
+        self.input_ids = []
+        self.target_ids = []
+
+        token_ids = tokenizer.encode(
+            txt, allowed_special={"&lt;|endoftext|&gt;"}
+        )
+        assert len(token_ids) &gt; max_length, "최소 max_length+1 토큰 필요"
+
+        for i in range(0, len(token_ids) - max_length, stride):
+            input_chunk = token_ids[i:i + max_length]
+            target_chunk = token_ids[i + 1:i + max_length + 1]
+            self.input_ids.append(torch.tensor(input_chunk))
+            self.target_ids.append(torch.tensor(target_chunk))
+
+    def __len__(self):
+        return len(self.input_ids)
+
+    def __getitem__(self, idx):
+        return self.input_ids[idx], self.target_ids[idx]</code></pre>
+<p>교안의 빈칸을 채우고 주석을 줄인 코드입니다. 아래 두 줄은 앞선 실습에서 만든 <code>raw_text</code>와 <code>tokenizer</code>를 사용합니다.</p><pre><code>dataset = GPTDatasetV1(raw_text, tokenizer, max_length=4, stride=2)
+print(len(dataset))
+x, y = dataset[0]
+print(x, y)
+print(x.shape, y.shape)  # 각각 torch.Size([4])</code></pre>
+<table><thead><tr><th>단계</th><th>무슨 일을 하나요?</th></tr></thead><tbody><tr><td>빈 리스트 두 개</td><td>입력 카드와 정답 카드를 같은 순서로 저장할 공간을 만듭니다.</td></tr><tr><td><code>tokenizer.encode</code></td><td>전체 텍스트를 토큰 ID 리스트로 바꿉니다. 이 클래스는 문자열을 받으므로 먼저 encode합니다.</td></tr><tr><td><code>assert</code></td><td>다음 토큰 정답까지 만들 수 있는 길이인지 확인합니다. 길이 4의 샘플에는 원본 토큰 최소 5개가 필요합니다.</td></tr><tr><td><code>range(..., stride)</code></td><td>시작점 i를 움직이며 여러 샘플을 만듭니다. 불완전한 마지막 샘플은 만들지 않습니다.</td></tr><tr><td><code>torch.tensor</code>와 <code>append</code></td><td>각 조각을 텐서로 바꾸고 리스트에 추가합니다. ID를 임베딩 벡터로 바꾸는 단계는 아닙니다.</td></tr></tbody></table>
+<div class="callout"><strong>i와 idx를 구분하세요.</strong><br>i는 원본 토큰 줄에서의 시작점, idx는 만들어진 샘플 보관함의 번호입니다. 예를 들어 stride=2일 때 두 번째 샘플은 <code>idx=1</code>, 원본 시작점은 <code>i=2</code>입니다.</div>
+<p><code>__getitem__</code>에서는 입력·정답 모두 <strong>같은 idx</strong>를 씁니다. 정답을 한 칸 미는 작업은 이미 target_chunk를 만들 때 했습니다. 여기서 <code>idx+1</code>을 사용하면 다른 샘플의 정답을 꺼내 짝이 어긋납니다.</p><p><strong>Dataset과 DataLoader:</strong> 지금 클래스는 샘플 한 쌍을 반환합니다. 다음 셀의 DataLoader가 여러 샘플을 배치로 묶습니다. 길이 4의 입력 한 개는 shape <code>(4,)</code>이고 배치 크기가 8이면 <code>(8,4)</code>가 됩니다.</p><details><summary>샘플 수를 직접 확인하는 식</summary><p>원본 토큰 수 N, 길이 L, 양의 stride S라면 교안의 샘플 수는 <code>len(range(0, N-L, S))</code>입니다. 예: N=9, L=4, S=2 → <code>[0,2,4]</code> → 3개입니다. N≤L이면 이 교안의 assert에서 먼저 멈춥니다.</p><p>원본 코드는 양의 max_length·stride를 전제로 합니다. 특히 stride=0은 range 오류를 일으킵니다. stride가 길이보다 크면 입력 창 사이에 건너뛰는 구간이 생길 수 있습니다.</p></details><p class="source">교안의 세 번째 코드 셀과 대조한 설명입니다. <a href="https://docs.python.org/3.12/library/stdtypes.html#range">Python range 공식 설명</a> · <a href="https://docs.pytorch.org/docs/stable/data.html">PyTorch Dataset·DataLoader 공식 설명</a>.</p></section>
+</div>
+<p><a href="0005-create-dataloader.html">다음 수업 → DataLoader 만들기</a> · <a href="index.html">전체 목차</a></p>
+<section id="exam"><h2>4. 설명을 가리고 풀어 보세요</h2><p>교안 기반 자체 연습 7개입니다. 1~5번은 답 자동 확인, 6번은 설명, 7번은 실제 코딩입니다. 입력 답은 저장·전송되지 않으며 브라우저에서 Python을 실행하지 않습니다.</p><noscript><p>JavaScript가 꺼져 있으면 정답·해설을 열어 직접 비교하세요.</p></noscript>
+<article class="quiz"><h3>01 · 입력 조각의 시작과 끝</h3><pre><code>input_chunk = token_ids[???? : ???? + max_length]</code></pre><form data-answer="i,i|i, i|i i" data-explanation="두 곳 모두 i입니다. 현재 시작점부터 max_length개를 자릅니다."><label for="q1">두 답을 쉼표로 구분</label><input id="q1" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><code>i, i</code>. <code>token_ids[i:i+max_length]</code>입니다. 예: i=2, 길이=4이면 인덱스 2·3·4·5를 가져옵니다.</p></details></article>
+<article class="quiz"><h3>02 · stride가 2라면 정답도 2칸 뒤?</h3><pre><code>target_chunk = token_ids[i + ????:i + max_length + ????]</code></pre><p>stride=2일 때 두 빈칸에 공통으로 들어갈 숫자는?</p><form data-answer="1" data-explanation="다음 토큰 정답은 stride와 관계없이 한 칸 뒤입니다."><label for="q2">공통 숫자 하나</label><input id="q2" name="answer" type="text" autocomplete="off"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><code>1</code>. 예: 입력 [10,20,30,40]의 정답은 [20,30,40,50]입니다. stride는 다음 입력 샘플의 시작 간격입니다.</p></details></article>
+<article class="quiz"><h3>03 · 같은 샘플을 반환하기</h3><pre><code>def __getitem__(self, idx):
+    return self.input_ids[idx], self.target_ids[????]</code></pre><form data-answer="idx" data-explanation="두 리스트의 같은 번호를 꺼냅니다. 정답 shift는 이미 샘플 생성 때 끝났습니다."><label for="q3">빈칸에 들어갈 변수</label><input id="q3" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><code>idx</code>. 예: dataset[1]은 1번 입력과 1번 정답을 반환합니다.</p></details></article>
+<article class="quiz"><h3>04 · len(dataset)은 얼마일까?</h3><p>원본이 9토큰, max_length=4, stride=2입니다. 만든 샘플 수를 입력하세요.</p><form data-answer="3" data-explanation="range(0,9-4,2)의 시작점은 0,2,4이므로 샘플은 3개입니다."><label for="q4">샘플 개수</label><input id="q4" name="answer" type="text" autocomplete="off"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><code>3</code>. __len__은 전체 토큰 수 9나 샘플 길이 4가 아니라 저장한 샘플 수를 반환합니다.</p></details></article>
+<article class="quiz"><h3>05 · 원본 길이 확인</h3><p>“토큰이 정확히 4개여도 max_length=4인 입력·정답 쌍을 이 코드로 만들 수 있다.”</p><form data-answer="X" data-explanation="정답 마지막 토큰을 위해 최소 5개가 필요합니다. 원본 4개면 assert에서 멈춥니다."><label><input type="radio" name="answer" value="O"> O</label><label><input type="radio" name="answer" value="X"> X</label><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p>X. 예: a b c d를 입력으로 쓰려면 정답 b c d e에 필요한 e까지 원본에 있어야 합니다.</p></details></article>
+<article class="quiz"><h3>06 · 세 메서드를 내 말로</h3><p>__init__, __len__, __getitem__의 역할을 한 문장씩 설명하고, 왜 __getitem__에서 정답 idx를 +1 하지 않는지 덧붙이세요.</p><label for="q6">나의 설명</label><textarea id="q6" placeholder="먼저 내 말로 설명해 보세요."></textarea><details><summary>작성 후 비교할 해설</summary><p>__init__은 샘플들을 준비하고, __len__은 샘플 개수를 알려주며, __getitem__은 요청한 샘플의 입력·정답을 꺼냅니다. 예: dataset[0]은 0번 입력과 0번 정답입니다. target_chunk가 이미 다음 토큰으로 이동되어 있으므로 같은 idx를 사용합니다.</p></details></article>
+<article class="quiz"><h3>07 · 빈 노트북에서 클래스 재작성</h3><p>제출 위치: <code>practice/day-01/gpt-dataset.ipynb</code>. 직접 파일을 만들고, 아래 고정 테스트 도구만 복사한 뒤 <strong>GPTDatasetV1은 설명을 닫고 직접 작성</strong>하세요. 예상 10분. PyTorch가 설치된 환경에서 진행합니다.</p><pre><code>import torch
+from torch.utils.data import Dataset
+
+# 다음 토큰 ID를 돌려주는 연습용 도구. 실제 BPE가 아닙니다.
+class FixedTokenizer:
+    def encode(self, txt, allowed_special=None):
+        return [10,20,30,40,50,60,70,80,90]
+
+# 여기에 GPTDatasetV1 클래스를 직접 작성하세요.
+
+dataset = GPTDatasetV1("연습용", FixedTokenizer(), max_length=4, stride=2)
+assert len(dataset) == 3
+x, y = dataset[1]
+assert x.tolist() == [30,40,50,60]
+assert y.tolist() == [40,50,60,70]
+assert tuple(x.shape) == tuple(y.shape) == (4,)
+print("샘플 생성·개수·조회 확인 완료")</code></pre><p>완료 기준: 새 커널에서 전체 실행 성공 + 위 검사를 모두 통과 + i와 idx의 차이 설명. 다운로드와 BPE 결과의 영향을 분리하기 위해 고정 도구를 사용합니다.</p><details><summary>시도 후 비교할 핵심 정답</summary><pre><code># __init__에서 반복문 안
+input_chunk = token_ids[i:i + max_length]
+target_chunk = token_ids[i + 1:i + max_length + 1]
+self.input_ids.append(torch.tensor(input_chunk))
+self.target_ids.append(torch.tensor(target_chunk))
+
+# __len__
+return len(self.input_ids)
+
+# __getitem__
+return self.input_ids[idx], self.target_ids[idx]</code></pre><p>클래스 전체 정답은 위의 ‘완성 코드’ 또는 <a href="../reference/gpt-dataset.html">복습 카드</a>에서 확인합니다. 도움받았다면 그 사실을 기록하고 다음날 다시 작성하세요.</p></details></article>
+<div class="controls"><button class="action" id="quiz-reset" type="button">자동 확인 문제 다시 풀기</button></div><p>1~5번만 초기화하고 6번 메모는 유지합니다. 자동 정답 확인과 실제 독립 코딩의 숙달은 별도로 확인합니다.</p></section>
+<footer><h2>내일의 1분 복습</h2><p>입력·정답 슬라이스와 __getitem__의 return을 자료 없이 다시 적어 보세요. 이해되지 않는 부분은 에이전트에게 질문하세요.</p><p><a href="../reference/gpt-dataset.html">한 장 요약</a> · <a href="0003-text-to-next-token.html">이전 수업</a> · <a href="../class-notes/day-01.md">오늘 필기</a></p><p class="source">교안: <a href="../llm_hands_on/Chapter_2_Exercise_Dataset.ipynb">세 번째 코드 셀</a>. 추천 원문: <a href="https://docs.pytorch.org/docs/stable/data.html#map-style-datasets">PyTorch map-style Dataset</a>. 본문은 해당 코드와 API 설명을 바탕으로 작성했으며 실제 실기 출제 여부는 강사 공지를 따릅니다.</p></footer></main></body></html>

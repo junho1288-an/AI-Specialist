@@ -1,0 +1,46 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Day 1 · 토큰 정보에 위치를 더하기</title><link rel="stylesheet" href="../assets/lesson.css"><link rel="stylesheet" href="../assets/practice.css"><script src="../assets/practice.js" defer></script><script src="../assets/batch-embedding-visuals.js" defer></script></head><body class="course">
+<header class="hero"><span class="badge">DAY 01 / 일곱 번째 코드 셀 · Token + Position Embedding / 설명 5분 + 연습 10분</span><h1>토큰 정보에 위치를 더하기</h1><p class="lead">교안 코드를 이해하고, 설명을 닫은 뒤 빈 노트북에 직접 작성합니다.</p><p class="muted">교안 기반 자체 연습입니다. 실제 출제 여부는 강사 공지를 따릅니다.</p></header><nav><a href="index.html">전체 목차</a><a href="0007-token-embedding.html">이전 수업</a><a href="#exam">시험 문제</a><a href="../reference/position-embedding.html">복습 카드</a></nav><div class="controls"><button type="button" class="action" id="exam-toggle" aria-pressed="false">설명 가리고 시험 보기</button></div><main><div class="reading"><h2>1. 무엇인지와 어디인지를 함께</h2><div class="flow"><div class="flow-box"><b>토큰 임베딩</b>ID가 가리키는 벡터<br>(8,4,256)</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>위치 임베딩</b>위치 0·1·2·3의 벡터<br>(4,256)</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>둘을 더한 입력</b>모든 배치에 위치 정보 반영<br>(8,4,256)</div></div><p>같은 ID는 토큰 임베딩에서 같은 행을 꺼냅니다. 그래서 이 셀에서는 <strong>위치에 대응하는 별도의 학습 가능한 벡터</strong>를 더합니다. 단순한 위치 숫자 0·1·2·3 자체를 256차원 토큰 벡터에 더하는 것이 아닙니다.</p><p><strong>작은 예시:</strong> 같은 토큰 벡터가 [1,2,3]이어도 위치 0의 벡터 [0.1,0.2,0.3]을 더하면 [1.1,2.2,3.3], 위치 1의 벡터 [0.4,0.5,0.6]을 더하면 [1.4,2.5,3.6]입니다. 이 값은 원리를 위한 설명용이며 실제 초기값이 아닙니다.</p><h2>2. 교안의 전체 흐름</h2><pre><code># 앞 셀에서 torch, raw_text, create_dataloader_v1이 필요합니다.
+vocab_size = 50257
+output_dim = 256
+token_embedding_layer = torch.nn.Embedding(vocab_size, output_dim)
+
+max_length = 4
+dataloader = create_dataloader_v1(
+    raw_text, batch_size=8, max_length=max_length,
+    stride=max_length, shuffle=False
+)
+data_iter = iter(dataloader)
+inputs, targets = next(data_iter)
+
+token_embeddings = token_embedding_layer(inputs)
+print(token_embeddings.shape)
+
+context_length = max_length
+pos_embedding_layer = torch.nn.Embedding(context_length, output_dim)
+pos_embeddings = pos_embedding_layer(torch.arange(max_length))
+print(pos_embeddings.shape)
+
+input_embeddings = token_embeddings + pos_embeddings
+print(input_embeddings.shape)</code></pre>
+<table><thead><tr><th>변수</th><th>shape 또는 값</th><th>읽는 법</th></tr></thead><tbody><tr><td>inputs, targets</td><td>(8,4)</td><td>샘플 8개 × 토큰 4개</td></tr><tr><td>token_embedding_layer.weight</td><td>(50257,256)</td><td>토큰 ID마다 256차원 벡터</td></tr><tr><td>token_embeddings</td><td>(8,4,256)</td><td>샘플 × 토큰 × 벡터 차원</td></tr><tr><td>torch.arange(max_length)</td><td>[0,1,2,3]</td><td>이번 입력 안의 위치 번호</td></tr><tr><td>pos_embedding_layer.weight</td><td>(4,256)</td><td>4개 위치의 학습 가능한 표</td></tr><tr><td>pos_embeddings</td><td>(4,256)</td><td>각 위치에 대응하는 벡터</td></tr><tr><td>input_embeddings</td><td>(8,4,256)</td><td>두 종류 벡터를 더한 최종 입력</td></tr></tbody></table><p>50257은 이 GPT-2 인코딩의 어휘 크기이며 전체 글의 토큰 수가 아닙니다. <code>context_length=max_length</code>는 이 실습에서 둘을 같은 값으로 둔 것입니다. 함수의 기본 drop_last=True이므로 충분한 샘플이 있어야 배치 8개가 나옵니다.</p><h2>3. shape가 다른데 어떻게 더할까요?</h2><pre><code>token_embeddings  (8, 4, 256)
+pos_embeddings      (4, 256)
+# 배치 축에 1이 있다고 생각하면
+#                  (1, 4, 256)
+# 같은 위치 벡터를 배치 8개 각각에 적용
+result            (8, 4, 256)</code></pre><p>이를 <strong>브로드캐스팅(broadcasting)</strong>이라고 합니다. 오른쪽 축부터 크기를 맞춰 같은 위치 벡터를 모든 샘플에 적용합니다. 이 경우 결과의 축이 늘거나 벡터 차원이 512로 합쳐지지 않습니다.</p><div class="callout">이 셀은 <strong>학습 가능한 위치 벡터를 더하는 방식</strong>입니다. 앞서 질문한 RoPE는 Query·Key를 회전시키는 방식이므로 구분하세요. targets는 이 셀에서 꺼냈지만 아직 임베딩하거나 손실 계산에 사용하지 않습니다.</div><details><summary>교안에 저장된 세 출력</summary><pre><code>torch.Size([8, 4, 256])
+torch.Size([4, 256])
+torch.Size([8, 4, 256])</code></pre><p>교안에 저장된 실행 결과와 위 shape 설명을 대조했습니다.</p></details><p>이 셀에는 원래 ???? 빈칸이 없습니다. 아래 빈칸 문제는 독립 코딩을 위한 추가 연습입니다. 이 수업의 범위는 여기까지이며, 다음 “Tokenizer 비교”는 포함하지 않습니다.</p><p class="source">교안: <a href="../llm_hands_on/Chapter_2_Exercise_Dataset.ipynb">일곱 번째 코드 셀 · Token + Position Embedding</a>. API 근거: <a href="https://docs.pytorch.org/docs/stable/notes/broadcasting.html">PyTorch broadcasting 공식 설명</a>.</p></div><section id="exam"><h2>설명을 가리고 풀어 보기</h2><p>1~5번 자동 확인, 6번 설명 비교, 7번 직접 코딩. 브라우저에서는 Python을 실행하지 않으며 답변을 저장·전송하지 않습니다.</p><noscript>JavaScript가 꺼져 있으면 정답·해설을 열어 직접 비교하세요.</noscript><article class="quiz"><h3>01 · 위치 번호 만들기</h3><pre><code>positions = torch.????(max_length)</code></pre><form data-answer="arange" data-explanation="예: torch.arange(4)는 [0,1,2,3]을 담은 정수 텐서입니다."><label for="q1">답 입력</label><input id="q1" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>arange</strong>. 예: torch.arange(4)는 [0,1,2,3]을 담은 정수 텐서입니다.</p></details></article><article class="quiz"><h3>02 · 위치 표의 행 개수</h3><pre><code>pos_embedding_layer = torch.nn.Embedding(????, output_dim)</code></pre><form data-answer="context_length" data-explanation="예: context_length=4이면 0~3번 위치를 조회할 수 있습니다."><label for="q2">답 입력</label><input id="q2" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>context_length</strong>. 예: context_length=4이면 0~3번 위치를 조회할 수 있습니다.</p></details></article><article class="quiz"><h3>03 · 최종 결합 연산</h3><pre><code>input_embeddings = token_embeddings ???? pos_embeddings</code></pre><form data-answer="+" data-explanation="이 교안은 같은 차원의 두 벡터를 원소별로 더합니다. 예: [1,2]+[0.1,0.2]=[1.1,2.2]."><label for="q3">답 입력</label><input id="q3" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>+</strong>. 이 교안은 같은 차원의 두 벡터를 원소별로 더합니다. 예: [1,2]+[0.1,0.2]=[1.1,2.2].</p></details></article><article class="quiz"><h3>04 · 벡터 차원은?</h3><p>(8,4,256) + (4,256)의 결과는 (8,4, ????)입니다.</p><form data-answer="256" data-explanation="브로드캐스팅으로 더하므로 벡터 길이는 256을 유지합니다."><label for="q4">답 입력</label><input id="q4" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>256</strong>. 브로드캐스팅으로 더하므로 벡터 길이는 256을 유지합니다.</p></details></article><article class="quiz"><h3>05 · RoPE와 같을까?</h3><p>“이 코드의 token_embeddings + pos_embeddings는 RoPE의 회전 계산이다.”</p><form data-answer="X" data-explanation="이 코드는 별도의 위치 임베딩을 더합니다. RoPE는 Query·Key를 회전시키는 방식입니다."><label><input type="radio" name="answer" value="O"> O</label><label><input type="radio" name="answer" value="X"> X</label><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>X</strong>. 이 코드는 별도의 위치 임베딩을 더합니다. RoPE는 Query·Key를 회전시키는 방식입니다.</p></details></article><article class="quiz"><h3>06 · 내 말로 설명하기</h3><p>왜 위치 임베딩 shape에는 배치 크기 8이 없는데 토큰 임베딩에 더할 수 있나요?</p><label for="q6">나의 설명</label><textarea id="q6" placeholder="내 말로 먼저 설명해 보세요."></textarea><details><summary>작성 후 비교할 해설</summary><p>브로드캐스팅으로 위치 벡터들을 모든 샘플에 공통 적용하기 때문입니다. 예: (2,4,3)+(4,3)도 (2,4,3)이며, 각각의 샘플에서 0번 위치에는 같은 0번 위치 벡터를 더합니다.</p></details></article><article class="quiz"><h3>07 · 빈 노트북 실기</h3><p>제출 위치: <code>practice/day-01/position-embedding.ipynb</code>. 폴더와 파일은 직접 만드세요. 예상 5분, PyTorch가 설치된 환경에서 진행합니다.</p><p>다운로드 없이 작은 크기로 연습합니다. 입력 [[1,2,3],[3,2,1]], 어휘 크기 6, 벡터 차원 4로 토큰 임베딩을 만들고 3개 위치의 임베딩을 더하세요. 세 shape를 예측하고 검사하세요.</p><details><summary>시도 후 모범 코드</summary><pre><code>import torch
+
+torch.manual_seed(123)
+inputs = torch.tensor([[1,2,3],[3,2,1]])
+token_layer = torch.nn.Embedding(6, 4)
+position_layer = torch.nn.Embedding(3, 4)
+token_vectors = token_layer(inputs)
+position_vectors = position_layer(torch.arange(3))
+combined = token_vectors + position_vectors
+print(token_vectors.shape, position_vectors.shape, combined.shape)
+assert tuple(token_vectors.shape) == (2, 3, 4)
+assert tuple(position_vectors.shape) == (3, 4)
+assert tuple(combined.shape) == (2, 3, 4)
+assert torch.allclose(combined[0, 0],
+                      token_vectors[0, 0] + position_vectors[0])</code></pre><p>두 번째 샘플에도 같은 위치 벡터가 적용되는지 확인해 보세요. 합산은 벡터 차원을 늘리지 않습니다.</p></details><p>완료 기준: 자료 없이 작성, 새 커널에서 전체 실행 성공, 검사 통과, 이유 설명. 도움받았다면 기록하고 다음날 자료 없이 다시 작성하세요.</p></article><div class="controls"><button class="action" type="button" id="quiz-reset">자동 확인 문제 다시 풀기</button></div><p>초기화는 1~5번 답과 피드백을 지우며 6번 설명 메모는 유지합니다.</p></section><footer><h2>다음날 1분 복습</h2><p>자료 없이 핵심 코드를 적고 각 인자의 뜻과 출력 shape를 설명해 보세요. 제출 코드를 보내 주면 에이전트가 검토합니다. 이해되지 않는 부분은 바로 질문하세요.</p><p><a href="../reference/position-embedding.html">한 장 요약</a> · <a href="0007-token-embedding.html">이전 수업</a> · <a href="index.html">Tokenizer 비교 전 범위 완료 · 전체 목차</a> · <a href="../class-notes/day-01.md">오늘 필기</a></p><p class="source">추천 원문: <a href="https://docs.pytorch.org/docs/stable/notes/broadcasting.html">PyTorch broadcasting 공식 설명</a>. 실제 숙달 여부는 노트북 제출과 지연 복습으로 확인합니다.</p></footer></main></body></html>

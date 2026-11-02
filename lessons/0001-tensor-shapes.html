@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Day 1 · 텐서 shape 진단</title><link rel="stylesheet" href="../assets/lesson.css"></head><body>
+<p class="eyebrow">AI Specialist · Day 1 · 10~15분</p><h1>이미지 묶음의 모양을 설명하기</h1>
+<p>오늘 목표는 작은 텐서를 만들고 shape를 설명하는 것입니다. 아직 설치 여부와 Python 수준을 모르므로 이 과제는 출발점을 찾는 진단입니다.</p>
+<h2>먼저 말로 답해 보세요</h2><ol><li>Python의 for문과 함수를 혼자 작성할 수 있나요? 최근 작성한 예를 한 가지 말해 주세요.</li><li>Jupyter에서 커널을 재시작하면 앞서 만든 변수는 어떻게 될까요?</li></ol>
+<h2>필요한 개념 하나</h2><p>텐서의 shape는 각 축의 크기입니다. 이미지 2장을 채널·높이·너비 순으로 쌓은 연습 입력의 shape를 <code>(2, 1, 28, 28)</code>로 정합시다. 첫 축은 이미지 수이고, 나머지는 한 이미지의 모양입니다. 텐서 속성과 조작은 <a href="https://docs.pytorch.org/tutorials/beginner/basics/tensorqs_tutorial.html">공식 Tensors 문서</a>에서 확인할 수 있습니다.</p>
+<h2>빈 노트북 과제</h2><p>제출 경로: <code>practice/day-01/tensor-shapes.ipynb</code>. 다음 조건을 코드와 짧은 설명으로 채우세요. 처음에는 예제 코드를 찾지 말고 시도해 보세요.</p><ol><li>PyTorch를 import하고 버전을 출력하세요. 설치 오류가 나면 오류 메시지를 보내 주세요.</li><li>0으로 채워진 shape <code>(2, 1, 28, 28)</code> 텐서를 만드세요.</li><li>실행 전에 이미지 1장과 전체 묶음의 원소 수를 예측하세요.</li><li>배치 축을 유지하면서 각 이미지를 한 줄로 펼치고 shape를 출력하세요.</li><li>새 커널에서 전체 실행하고 예상과 실제가 같은지 설명하세요.</li></ol>
+<p>완료 기준: 원본 shape와 펼친 shape를 출력하고, 각 축의 의미 및 원소 수 보존을 설명합니다. 실패한 코드도 그대로 제출하면 어디부터 연습할지 함께 찾을 수 있습니다.</p>
+<details><summary>막혔을 때만: 첫 힌트</summary><p>생성은 <code>torch.zeros</code>, 모양 확인은 <code>.shape</code>를 찾아보세요. 펼칠 때 이미지 2장이라는 첫 축이 남아야 합니다.</p></details>
+<details><summary>작성 후 확인할 결과</summary><p>한 이미지의 원소 수는 784개, 전체는 1568개입니다. 펼친 shape는 <code>(2, 784)</code>입니다. 코드와 이유를 설명할 수 있는지 확인하고 자료를 닫아 다시 작성하세요.</p></details>
+<p>제출 후 다음날 같은 코드를 자료 없이 다시 작성합니다. 이해되지 않는 부분은 이 에이전트에게 바로 질문하세요.</p><p><a href="../reference/tensor-shapes.html">시도 후 참고할 shape 요약</a></p>
+</body></html>

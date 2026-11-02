@@ -1,0 +1,90 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Chapter 4 · 셀 4 · TransformerBlock과 GPTModel 조립</title><link rel="stylesheet" href="../assets/lesson.css"><link rel="stylesheet" href="../assets/practice.css"><script src="../assets/practice.js" defer></script><script src="../assets/gpt-generation-demo.js" defer></script></head><body class="course"><header class="hero"><span class="badge">CHAPTER 4 / 전체 셀 4 / 설명 7분 + 연습 10분</span><h1>셀 4 · TransformerBlock과 GPTModel 조립</h1><p class="lead">토큰 ID에서 어휘별 logits까지 전체 shape 연결</p><p class="muted">셀 번호는 파일 위에서부터 센 순서입니다. 자체 연습 문제이며 실제 출제 범위는 강사 공지를 따릅니다.</p></header><nav><a href="chapter-4.html">Chapter 4 목차</a><a href="0019-gpt-layernorm-gelu.html">이전</a><a href="#exam">확인 문제</a><a href="../reference/chapter-4-gpt.html">복습 카드</a></nav><div class="controls"><button id="exam-toggle" class="action" type="button" aria-pressed="false">설명 가리고 시험 보기</button></div><main><div class="reading"><h2>1. 블록은 ‘새 정보 + 원래 정보’</h2><div class="flow"><div class="flow-box"><b>입력 x</b>(B,T,E)</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>Norm → Attention</b>가공한 정보</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>+ shortcut</b>원래 입력 더하기</div><span class="arrow" aria-hidden="true">→</span><div class="flow-box"><b>Norm → FF → +shortcut</b>(B,T,E) 유지</div></div><p>Residual connection(잔차 연결)은 가공된 출력에 원래 입력을 더하는 경로입니다. 학습과 기울기 흐름을 돕습니다. 예를 들어 원래 [1,2]에 새 정보 [0.1,0.2]를 더하면 [1.1,2.2]입니다. 결과를 강제로 원본과 같게 만드는 것은 아닙니다.</p><p>빈칸 <code>self.????(x)</code> 두 곳은 순서대로 <strong>att, ff</strong>입니다. 이 교안은 정규화 후 모듈을 통과시키는 Pre-LayerNorm 구조입니다. 두 번째 shortcut은 Attention 잔차를 더한 뒤의 x를 새로 저장합니다.</p>
+<h2>2. GPT 전체의 shape 흐름</h2><pre><code># 설명용 어휘 V=32, 길이 T=3, 배치 B=2, 임베딩 E=8
+in_idx             # (2,3), 정수 토큰 ID
+tok_embeds         # (2,3,8)
+pos_embeds         # (3,8)
+x = tok_embeds + pos_embeds  # (2,3,8)
+x = self.trf_blocks(x)      # (2,3,8)
+x = self.final_norm(x)      # (2,3,8)
+logits = self.out_head(x)   # (2,3,32)</code></pre>
+<table><thead><tr><th>빈칸</th><th>답</th><th>이유</th></tr></thead><tbody><tr><td>tok_emb cfg 키</td><td>vocab_size</td><td>토큰 ID 종류 수</td></tr><tr><td>pos_emb cfg 키</td><td>context_length</td><td>위치 표의 행 수</td></tr><tr><td>out_head cfg 키</td><td>vocab_size</td><td>각 어휘 ID의 점수 출력</td></tr><tr><td>tok_embeds와 더할 것</td><td>pos_embeds</td><td>위치 정보 반영</td></tr><tr><td>쌓은 블록 호출</td><td>trf_blocks</td><td>n_layers개 블록 통과</td></tr><tr><td>최종 점수 레이어</td><td>out_head</td><td>임베딩 차원을 어휘 차원으로</td></tr></tbody></table>
+<p>앞의 att·ff를 포함해 이 셀의 빈칸은 8곳입니다. <code>*[TransformerBlock(...) ...]</code>의 *는 모듈 목록을 nn.Sequential의 개별 인자로 펼칩니다.</p><div class="callout"><strong>logits는 아직 확률이 아닙니다.</strong><p>예: 어휘 32개면 각 위치에서 점수 32개를 냅니다. 음수도 가능하고 합이 1일 필요도 없습니다. softmax하면 어휘별 분포가 되고 argmax하면 가장 높은 점수의 ID를 고를 수 있습니다.</p></div><p>토큰·위치 임베딩과 출력 헤드는 초기화된 학습 가능한 레이어입니다. 이 코드에서 tok_emb와 out_head 가중치는 별개이며 자동 공유되지 않습니다. 입력 토큰 ID는 vocab_size보다 작고, 입력 길이는 context_length 이하여야 합니다.</p><details><summary>시도 후 셀 4 전체 완성 코드 보기</summary><pre data-source-cell="4"><code>class TransformerBlock(nn.Module):
+    &quot;&quot;&quot;
+    표준 트랜스포머 블록 (Decoder Block)
+    구조: LayerNorm -&gt; Attention -&gt; Add(Residual) -&gt; LayerNorm -&gt; FeedForward -&gt; Add(Residual)
+    &quot;&quot;&quot;
+    def __init__(self, cfg):
+        super().__init__()
+        self.att = MultiHeadAttention(
+            d_in=cfg[&quot;emb_dim&quot;],
+            d_out=cfg[&quot;emb_dim&quot;],
+            context_length=cfg[&quot;context_length&quot;],
+            num_heads=cfg[&quot;n_heads&quot;],
+            dropout=cfg[&quot;drop_rate&quot;],
+            qkv_bias=cfg[&quot;qkv_bias&quot;])
+        self.ff = FeedForward(cfg)
+        self.norm1 = LayerNorm(cfg[&quot;emb_dim&quot;])
+        self.norm2 = LayerNorm(cfg[&quot;emb_dim&quot;])
+        self.drop_shortcut = nn.Dropout(cfg[&quot;drop_rate&quot;])
+
+    def forward(self, x):
+        shortcut = x
+        x = self.norm1(x) # Pre-LayerNorm 방식
+        x = self.att(x)
+        x = self.drop_shortcut(x)
+        x = x + shortcut  # 원본 입력을 더해줌 (기울기 소실 방지)
+
+        shortcut = x
+        x = self.norm2(x)
+        x = self.ff(x)
+        x = self.drop_shortcut(x)
+        x = x + shortcut  # 원본 입력 다시 더함
+
+        return x
+class GPTModel(nn.Module):
+    &quot;&quot;&quot;
+    전체 GPT 모델 구조 정의
+    Embedding -&gt; Transformer Blocks -&gt; Final Norm -&gt; Output Head
+    &quot;&quot;&quot;
+    def __init__(self, cfg):
+        super().__init__()
+        self.tok_emb = nn.Embedding(cfg[&quot;vocab_size&quot;], cfg[&quot;emb_dim&quot;])
+        self.pos_emb = nn.Embedding(cfg[&quot;context_length&quot;], cfg[&quot;emb_dim&quot;])
+        self.drop_emb = nn.Dropout(cfg[&quot;drop_rate&quot;])
+
+        self.trf_blocks = nn.Sequential(
+            *[TransformerBlock(cfg) for _ in range(cfg[&quot;n_layers&quot;])])
+
+        self.final_norm = LayerNorm(cfg[&quot;emb_dim&quot;])
+        self.out_head = nn.Linear(cfg[&quot;emb_dim&quot;], cfg[&quot;vocab_size&quot;], bias=False)
+
+    def forward(self, in_idx):
+        batch_size, seq_len = in_idx.shape
+
+        tok_embeds = self.tok_emb(in_idx)
+        pos_embeds = self.pos_emb(torch.arange(seq_len, device=in_idx.device))
+
+        x = tok_embeds + pos_embeds
+
+        x = self.drop_emb(x)
+
+        x = self.trf_blocks(x)
+
+        x = self.final_norm(x)
+        logits = self.out_head(x) # 각 단어에 대한 예측 점수 (Logits)
+
+        return logits</code></pre><p>원본 실행 코드에 정답을 채우고 주석을 줄였습니다. 이전 셀 정의에 의존하므로 위에서 아래로 실행하세요. 원본 노트북은 변경하지 않았습니다.</p></details></div><section id="exam"><h2>기억해서 풀어 보기</h2><p>1~5번 자동 확인, 6번 설명 비교, 7번 직접 코딩입니다. 브라우저는 Python을 실행하지 않고 답을 저장·전송하지 않습니다.</p><noscript>JavaScript가 꺼져 있으면 정답·해설을 열어 비교하세요.</noscript><article class="quiz"><h3>01 · Attention 호출</h3><pre><code>x = self.????(x)  # norm1 뒤</code></pre><form data-answer="att" data-explanation="블록은 norm1 다음 Attention을 적용합니다."><label for="q1">답 입력</label><input id="q1" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>att</strong>. 블록은 norm1 다음 Attention을 적용합니다.</p></details></article><article class="quiz"><h3>02 · 토큰 표 행 수</h3><pre><code>nn.Embedding(cfg[&quot;????&quot;], cfg[&quot;emb_dim&quot;])</code></pre><p>토큰 임베딩에서 사용할 키는?</p><form data-answer="vocab_size" data-explanation="예: 어휘 32개면 0~31번 ID의 행이 필요합니다."><label for="q2">답 입력</label><input id="q2" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>vocab_size</strong>. 예: 어휘 32개면 0~31번 ID의 행이 필요합니다.</p></details></article><article class="quiz"><h3>03 · 위치 더하기</h3><pre><code>x = tok_embeds + ????</code></pre><form data-answer="pos_embeds" data-explanation="토큰 벡터에 위치 벡터를 더합니다."><label for="q3">답 입력</label><input id="q3" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>pos_embeds</strong>. 토큰 벡터에 위치 벡터를 더합니다.</p></details></article><article class="quiz"><h3>04 · 최종 logits 차원</h3><p>emb_dim=8, vocab_size=32이면 logits 마지막 차원은?</p><form data-answer="32" data-explanation="각 어휘 ID에 대한 점수를 출력합니다."><label for="q4">답 입력</label><input id="q4" name="answer" type="text" autocomplete="off" spellcheck="false"><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>32</strong>. 각 어휘 ID에 대한 점수를 출력합니다.</p></details></article><article class="quiz"><h3>05 · 확률과 점수</h3><p>“GPTModel.forward는 반드시 합이 1인 확률을 반환한다.”</p><form data-answer="X" data-explanation="forward의 마지막은 Linear여서 logits를 반환합니다."><label><input type="radio" name="answer" value="O"> O</label><label><input type="radio" name="answer" value="X"> X</label><button type="submit">확인</button><p class="feedback" role="status"></p></form><details><summary>시도 후 정답·해설</summary><p><strong>X</strong>. forward의 마지막은 Linear여서 logits를 반환합니다.</p></details></article><article class="quiz"><h3>06 · 내 말로 설명</h3><p>TransformerBlock에서 shortcut을 두 번 새로 저장하는 이유와 residual 덧셈에 필요한 조건을 설명하세요.</p><label for="q6">나의 설명</label><textarea id="q6" placeholder="내 말로 먼저 설명해 보세요."></textarea><details><summary>작성 후 비교할 해설</summary><p>Attention 경로와 FeedForward 경로 각각에 현재 입력을 더하기 위해서입니다. 예: 두 경로 모두 (B,T,E)를 유지해야 원소별로 더할 수 있습니다.</p></details></article><article class="quiz"><h3>07 · 빈 노트북 실기</h3><p>제출: <code>practice/day-01/tiny-gpt-forward.ipynb</code>. 파일은 직접 만드세요. 예상 5~10분. 필요한 앞 셀의 클래스를 같은 노트북에서 먼저 정의합니다.</p><p>앞 4개 셀의 정의 후 작은 모델로 logits shape와 미래 차단을 검사하세요. 실제 GPT-2 tokenizer ID를 이 작은 어휘 모델에 넣지 마세요.</p><details><summary>시도 후 확인 코드</summary><pre><code>tiny_cfg = {
+    &quot;vocab_size&quot;: 32, &quot;context_length&quot;: 8, &quot;emb_dim&quot;: 8,
+    &quot;n_heads&quot;: 2, &quot;n_layers&quot;: 2, &quot;drop_rate&quot;: 0.0, &quot;qkv_bias&quot;: False
+}
+torch.manual_seed(123)
+model = GPTModel(tiny_cfg).eval()
+ids = torch.tensor([[1,2,3], [3,2,1]])
+with torch.no_grad():
+    logits = model(ids)
+    changed = ids.clone()
+    changed[:, 2] = 4
+    changed_logits = model(changed)
+assert tuple(logits.shape) == (2, 3, 32)
+assert torch.isfinite(logits).all()
+assert torch.allclose(logits[:, :2], changed_logits[:, :2], atol=1e-6)</code></pre><p>어휘 크기를 32로 줄였으므로 입력은 0~31 사이의 연습용 ID로 만듭니다.</p></details><p>완료 기준: 새 커널 전체 실행, 검사 통과, 핵심 코드 이유 설명. 도움받았다면 기록하고 다음날 자료 없이 재작성합니다.</p></article><div class="controls"><button id="quiz-reset" class="action" type="button">자동 확인 문제 다시 풀기</button></div><p>자동 확인 입력만 초기화하며 설명 메모는 유지합니다.</p></section><footer><p>코드나 이해되지 않는 부분을 에이전트에게 보내 주세요. 다음날 핵심 코드를 자료 없이 다시 작성해 봅니다.</p><p><a href="0019-gpt-layernorm-gelu.html">이전</a> · <a href="0021-gpt-generate.html">다음</a> · <a href="../class-notes/day-01.md">오늘 노트</a></p><p class="source">교안: <a href="../llm_hands_on/Chapter_4_Excercise_GPT.ipynb">셀 4</a>. 추천 1차 자료: <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html">PyTorch 공식 API</a>. GELU 보충: <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.GELU.html">공식 GELU</a>. 이전 개념: <a href="0009-attention-qkv.html">Q·K·V 수업</a>.</p></footer></main></body></html>

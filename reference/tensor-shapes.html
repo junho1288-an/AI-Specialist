@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>텐서 shape 참고</title><link rel="stylesheet" href="../assets/lesson.css"></head><body>
+<p class="eyebrow">과제를 시도한 뒤 펼치는 참고 자료</p><h1>배치를 유지하며 펼치기</h1><p>이번 연습에서 <code>N</code>은 이미지 수, <code>C</code>는 채널 수, <code>H</code>와 <code>W</code>는 높이와 너비입니다. <code>(N, C, H, W)</code>를 <code>(N, C × H × W)</code>로 펼칩니다.</p>
+<pre><code>import torch
+x = torch.zeros(2, 1, 28, 28)
+flat = x.flatten(start_dim=1)
+print(x.shape, flat.shape)
+assert flat.shape == (2, 784)
+assert x.numel() == flat.numel()</code></pre>
+<p><code>start_dim=1</code>은 첫 번째 배치 축을 남기고 그다음 축부터 합칩니다. 전체를 펼치면 이미지 사이의 구분까지 합쳐지므로 목표 shape와 달라집니다.</p>
+<p>출처: <a href="https://docs.pytorch.org/tutorials/beginner/basics/tensorqs_tutorial.html">공식 Tensors 문서</a>. <a href="../lessons/0001-tensor-shapes.html">첫 과제로 돌아가기</a></p></body></html>

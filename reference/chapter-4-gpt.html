@@ -1,0 +1,16 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Chapter 4 GPT 복습 카드</title><link rel="stylesheet" href="../assets/lesson.css"></head><body><p class="eyebrow">CHAPTER 4 / 시도 후 복습</p><h1>GPT 구조와 생성 루프</h1><h2>전체 shape</h2><pre><code>ID (B,T)
+→ 토큰 임베딩 + 위치 임베딩 (B,T,E)
+→ 여러 TransformerBlock (B,T,E)
+→ final_norm (B,T,E)
+→ out_head (B,T,V): 어휘별 logits</code></pre><p>예: B=2,T=3,E=8,V=32이면 logits (2,3,32). logits는 확률이 아니다.</p><h2>부품</h2><pre><code>norm_x = (x - mean) / torch.sqrt(var + eps)
+result = scale * norm_x + shift
+# FeedForward
+Linear(E,4*E) → GELU → Linear(4*E,E)
+# Pre-Norm TransformerBlock
+원래 x + Dropout(Attention(Norm(x)))
+→ 현재 x + Dropout(FeedForward(Norm(x)))</code></pre><p>LayerNorm은 각 토큰의 마지막 벡터 축을 정규화한다. scale·shift는 학습 가능하다. Attention은 토큰 간 정보를 섞고 FeedForward는 토큰별로 가공한다.</p><h2>생성 네 빈칸</h2><pre><code>idx_cond = idx[:, -context_size:]
+with torch.no_grad():
+    logits = model(idx_cond)
+logits = logits[:, -1, :]
+idx_next = torch.argmax(logits, dim=-1, keepdim=True)
+idx = torch.cat((idx, idx_next), dim=1)</code></pre><p>예: 시작 길이 4, max_new_tokens=10이면 최종 길이 14. 전체 idx는 남기고 모델에 넣는 문맥만 자른다. eval은 dropout 모드, no_grad는 기울기 기록 제어다. 이 함수에는 EOS 종료가 없다.</p><p>GPTModel(config)는 무작위 초기화이며 사전학습 모델 로딩이 아니다. 작은 어휘 모델에는 실제 GPT-2 ID를 그대로 넣지 않는다. 위 코드는 요약용 조각이며 전체 정의는 각 수업에 있다.</p><p><a href="../lessons/chapter-4.html">셀별 수업 목차</a> · <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.LayerNorm.html">LayerNorm 공식 설명</a> · <a href="https://docs.pytorch.org/docs/stable/generated/torch.no_grad.html">no_grad 공식 설명</a></p></body></html>
