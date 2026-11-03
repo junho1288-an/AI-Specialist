@@ -2,6 +2,10 @@
 
 ## Knowledge
 
+- Day 2 Attention 수업 근거: `llm_hands_on/pdf/app_sp_slides_20261013.pdf` **104~120쪽** 본문을 2026-11-03 확인했다. 문맥·QKV 역할·학습 의미·점수·스케일·가중합·softmax·mask·multi-head를 Chapter 3 셀 1~5와 대조했다. [시각화 수업](lessons/0026-day02-attention-journey.html), [복습 카드](reference/day02-attention-journey.html). PDF 109쪽의 자기 자신 우선 주목은 항상 성립하는 성질로 일반화하지 않는다. 원 논문 §3.2.1~2 및 PyTorch Linear로 보충 검증했다.
+
+- [AI인증시험_출제포인트.pdf](AI인증시험_출제포인트.pdf) 1쪽: 2026-11-03 본문을 확인했다. LLM·RAG·Data·Vision·On-device의 평가 관점과 2026-11-17 시험 표기를 담고 있다. 출제 전 `EXAM-SCOPE.md`에서 사용자 확정 제외 범위와 함께 읽는다.
+
 - [수업 자료 안내](llm_hands_on/README.md): 사용자가 받은 강의 자료 저장소. 수업 정리와 과제 출제 시 최우선으로 읽고 당일 실제 진도에 해당하는 노트북을 확인한다.
 - `llm_hands_on/Chapter_*.ipynb`: 벡터 공간, Dataset/DataLoader, Attention, GPT, 사전학습, 분류 파인튜닝, LoRA, instruction tuning 및 DPO 실습. 파일 존재와 README 목차를 확인했으며 실제 시험 포함 여부는 강사 공지로 확인한다.
 - [현재 존재하는 슬라이드](llm_hands_on/pdf/app_sp_slides_20261013.pdf): PDF 본문은 아직 검토하지 않았다. 자료 README의 PDF 링크는 다른 파일명을 가리키므로 실제 파일을 기준으로 참조한다.

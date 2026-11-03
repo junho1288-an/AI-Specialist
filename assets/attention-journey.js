@@ -1,0 +1,56 @@
+"use strict";
+(() => {
+ const d=window.attentionLessonData;
+ if(!d)return;
+ let row=1;
+ const $=id=>document.getElementById(id);
+ const f=n=>n.toFixed(4);
+ const vec=a=>'['+a.map(f).join(', ')+']';
+ const softmax=a=>{const max=Math.max(...a);const e=a.map(v=>Math.exp(v-max));const sum=e.reduce((x,y)=>x+y,0);return e.map(v=>v/sum);};
+ const drawMap=(target,matrix,kind)=>{
+  const table=document.createElement('table');
+  const head=table.createTHead().insertRow();
+  ['Q ↓ / K →',...d.tokens].forEach(t=>{const th=document.createElement('th');th.textContent=t;th.scope='col';head.append(th);});
+  const body=table.createTBody();
+  const max=Math.max(...matrix.flat().filter(Number.isFinite).map(Math.abs),.001);
+  matrix.forEach((values,i)=>{
+   const tr=body.insertRow();if(i===row)tr.className='selected-map-row';
+   const th=document.createElement('th');th.scope='row';th.textContent=d.tokens[i];tr.append(th);
+   values.forEach((v,j)=>{const td=tr.insertCell();const infinite=!Number.isFinite(v);const strength=kind==='weights'?v:Math.abs(v)/max;
+    td.textContent=infinite?'−∞':v.toFixed(3);
+    td.style.background=infinite?'#e5e9ed':`rgba(${kind==='weights'?'39,104,88':'91,88,155'},${.04+strength*.65})`;
+    td.style.color=!infinite&&strength>.6?'white':'#202b38';
+    td.title=`${d.tokens[i]} → ${d.tokens[j]}: ${infinite?'−∞ (미래 차단)':v.toFixed(6)}`;
+   });
+  });
+  $(target).replaceChildren(table);
+ };
+ const render=()=>{
+  const masked=$('causal-on').checked;
+  const scores=d.scores[row];
+  const weights=softmax(scores.map((v,i)=>masked&&i>row?-Infinity:v/Math.sqrt(2)));
+  const factor=Number($('value-factor').value);
+  const values=d.v.map((v,i)=>v.map(n=>n*(i===0?factor:1)));
+  const z=[0,1].map(c=>weights.reduce((s,w,i)=>s+w*values[i][c],0));
+  $('focus-token').textContent=d.tokens[row];
+  $('projection').textContent=`x = ${vec(d.x[row])}\nQ = ${vec(d.q[row])}\nK = ${vec(d.k[row])}\nV = ${vec(d.v[row])}`;
+  $('dot-example').textContent=`q(${d.tokens[row]}) · k(Your) = ${f(d.q[row][0])} × ${f(d.k[0][0])} + ${f(d.q[row][1])} × ${f(d.k[0][1])} = ${f(scores[0])}`;
+  $('score-row').textContent='['+scores.map(f).join(', ')+']';
+  $('bars').replaceChildren(...weights.map((w,i)=>{const r=document.createElement('div');r.className='bar-row';const t=document.createElement('span');t.textContent=d.tokens[i];const track=document.createElement('div');track.className='track';const bar=document.createElement('div');bar.className='bar';bar.style.width=`${w*100}%`;track.append(bar);const pct=document.createElement('span');pct.textContent=(w*100).toFixed(1)+'%';r.append(t,track,pct);return r;}));
+  $('mix-terms').textContent=weights.map((w,i)=>`${f(w)} × ${vec(values[i])} (${d.tokens[i]})`).join('\n+ ');
+  $('output-vector').textContent='z = '+vec(z);
+  $('factor-label').textContent=factor.toFixed(1)+'배';
+  $('row-sum').textContent=`이 행 비율 합: ${weights.reduce((s,w)=>s+w,0).toFixed(4)} (dropout 적용 전)`;
+  const table=document.createElement('table');const thead=table.createTHead();const hr=thead.insertRow();['Q ↓ / K →',...d.tokens].forEach(t=>{const th=document.createElement('th');th.textContent=t;hr.append(th);});
+  const tbody=table.createTBody();
+  d.scores.forEach((s,i)=>{const w=softmax(s.map((v,j)=>masked&&j>i?-Infinity:v/Math.sqrt(2)));const tr=tbody.insertRow();const th=document.createElement('th');th.textContent=d.tokens[i]+(i===row?' ← 선택':'');tr.append(th);w.forEach((v,j)=>{const td=tr.insertCell();td.textContent=masked&&j>i?'차단':v.toFixed(3);td.style.background=masked&&j>i?'#edf0f3':`rgba(39,104,88,${.06+v*.7})`;td.style.color=v>.55?'white':'#202b38';});});
+  $('heatmap').replaceChildren(table);
+  const scaled=d.scores.map((s,i)=>s.map((v,j)=>masked&&j>i?-Infinity:v/Math.sqrt(2)));
+  drawMap('map-raw',d.scores,'scores');
+  drawMap('map-scaled',scaled,'scores');
+  drawMap('map-weights',scaled.map(softmax),'weights');
+  document.querySelectorAll('[data-token-index]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.tokenIndex)===row)));
+ };
+ document.querySelectorAll('[data-token-index]').forEach(b=>b.addEventListener('click',()=>{row=Number(b.dataset.tokenIndex);render();}));
+ $('causal-on').addEventListener('change',render);$('value-factor').addEventListener('input',render);render();
+})();

@@ -1,0 +1,46 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Day 2 · 마스크와 register_buffer 그림 설명</title><link rel="stylesheet" href="../assets/lesson.css"><link rel="stylesheet" href="../assets/practice.css"><script defer src="../assets/practice.js"></script></head><body class="course"><header class="hero"><span class="badge">DAY 2 · Chapter 3 셀 1</span><h1>미래를 가릴 표시판을<br>모델에 보관하기</h1><p class="lead">마스크 만들기와 점수 가리기는 서로 다른 단계입니다.</p></header><main class="reading"><pre>self.register_buffer(
+    'mask',
+    torch.triu(torch.ones(context_length, context_length), diagonal=1)
+)</pre><p>괄호 안쪽부터 계산합니다. 이해를 위해 <b>context_length=4</b>로 두겠습니다.</p><div class="flow"><div class="flow-box"><b>① ones(4,4)</b>모두 1인 표 생성</div><span class="arrow">→</span><div class="flow-box"><b>② triu(...,1)</b>미래 칸에만 1 유지</div><span class="arrow">→</span><div class="flow-box"><b>③ register_buffer</b>self.mask로 보관</div></div>
+<h2>① torch.ones(4,4): 먼저 칸을 준비</h2><pre>         Your  journey starts with
+Your       1      1      1     1
+journey    1      1      1     1
+starts     1      1      1     1
+with       1      1      1     1</pre><p>행은 Q의 위치, 열은 참고할 K의 위치입니다. 이 숫자는 Attention 점수가 아니라 <b>위치 표시용 숫자</b>입니다.</p>
+<h2>② triu(..., diagonal=1): 오른쪽 위만 남김</h2><p><b>triu = upper triangular(상삼각) 부분을 남기는 함수.</b> <code>diagonal=1</code>은 주대각선 바로 위부터 남긴다는 뜻입니다. 나머지는 0이 됩니다.</p><pre>         Your  journey starts with
+Your       0      1      1     1
+journey    0      0      1     1
+starts     0      0      0     1
+with       0      0      0     0
+
+0 = 그대로 둘 위치     1 = 나중에 가릴 위치</pre><div class="callout">journey 행은 Your·journey 열이 0 → 허용.<br>starts·with 열은 1 → 미래라 차단 예정.</div><p>주대각선은 자기 자신을 보는 칸입니다. 자기 자신은 볼 수 있으므로 0으로 둡니다. <code>diagonal=0</code>이면 주대각선까지 1이 되어 자기 자신도 가리게 됩니다. 이 구현에서 첫 행 전체를 가리면 softmax가 NaN이 될 수 있습니다.</p>
+<h2>③ register_buffer('mask', 표): 모델의 보관함에 등록</h2><pre>모델 self
+├─ W_query.weight   학습으로 바꾸는 숫자
+├─ W_key.weight     학습으로 바꾸는 숫자
+├─ W_value.weight   학습으로 바꾸는 숫자
+└─ mask             고정된 미래 차단 표시판
+                     ↑ self.mask로 꺼내 씀</pre><p><code>'mask'</code>는 이름, 두 번째 인자는 그 이름으로 등록할 텐서입니다. 이 코드는 결과적으로 <code>self.mask</code>를 만들어 줍니다.</p><table><tr><th>등록 방식</th><th>의도</th><th>model.to(device)에 동반 이동</th><th>state_dict에 포함</th></tr><tr><td>nn.Linear의 Parameter</td><td>학습할 가중치</td><td>예</td><td>예</td></tr><tr><td>register_buffer의 mask</td><td>모델과 함께 관리할 비학습 텐서</td><td>예</td><td>예 · 기본 persistent=True</td></tr><tr><td>일반 텐서 속성으로 대입</td><td>단순 보관</td><td>자동 이동하지 않음</td><td>자동 포함하지 않음</td></tr></table><p>이 mask는 requires_grad=False이고 모델 파라미터 목록에 들어가지 않습니다. “어느 위치가 미래인가”는 정해진 규칙이라 학습할 필요가 없습니다. buffer라는 이름 자체가 모든 텐서의 gradient를 강제로 끄는 것은 아니며, 여기 생성한 마스크가 비학습 텐서인 것입니다. state_dict는 저장할 상태를 모은 사전이며 실제 파일 저장은 torch.save 등으로 따로 합니다.</p>
+<h2>④ forward에서 실제로 점수 가리기</h2><pre>attn_scores.masked_fill_(
+    self.mask.bool()[:num_tokens, :num_tokens],
+    -torch.inf
+)</pre><p><code>bool()</code>: 0 → False, 1 → True. <code>masked_fill_</code>: True인 칸을 -∞로 덮습니다. 끝의 밑줄은 기존 점수 텐서를 직접 수정한다는 뜻입니다.</p><div class="flow"><div class="flow-box"><b>점수 예시 · 실제 QK 값과 별개</b><pre> 1  2  3  4
+ 5  6  7  8
+ 9 10 11 12
+13 14 15 16</pre></div><span class="arrow">→</span><div class="flow-box"><b>마스크가 1인 곳을 −∞로</b><pre> 1 −∞ −∞ −∞
+ 5  6 −∞ −∞
+ 9 10 11 −∞
+13 14 15 16</pre></div><span class="arrow">→</span><div class="flow-box"><b>스케일링·softmax</b>−∞였던 칸의 비율은 0<br>그 뒤 V 가중합에서 제외</div></div><p><code>[:num_tokens,:num_tokens]</code>는 미리 크게 만든 표시판에서 현재 토큰 수만큼만 잘라 쓰는 것입니다. 최대 길이가 4인데 현재 입력은 2개면 좌상단 <code>[[0,1],[0,0]]</code>만 사용합니다.</p><p><b>정리할 문장:</b> 생성자에서는 가릴 위치를 표시해 보관하고, forward에서 그 표시대로 실제 점수를 −∞로 바꾼다.</p>
+<h2>직접 실행할 작은 코드</h2><pre>import torch
+from torch import nn
+
+model = nn.Module()
+model.register_buffer('mask', torch.triu(torch.ones(4, 4), diagonal=1))
+print(model.mask)
+print(model.mask.bool())
+print(model.state_dict().keys())  # mask 포함
+print(list(model.parameters()))  # 이 작은 예시는 학습 가중치가 없어 []
+
+scores = torch.arange(1., 17.).reshape(4, 4)
+scores.masked_fill_(model.mask.bool(), -torch.inf)
+print(scores)</pre><p class="source">PyTorch 2.5.1에서 mask·점수·state_dict·parameters를 실제 실행해 확인했습니다.</p></main>
+<section id="exam"><h2>20초 확인</h2><div class="quiz"><p>마스크의 1은 어떤 위치인가요?</p><form data-answer="b" data-explanation="이 마스크에서 1은 나중에 -∞로 덮을 미래 위치입니다."><label><input type="radio" name="answer" value="a">참고할 곳</label><label><input type="radio" name="answer" value="b">차단할 곳</label><button>확인</button><p class="feedback" aria-live="polite"></p></form></div><details><summary>왜 마스크는 학습시키지 않을까요? 먼저 말하고 펼치세요.</summary><p>자기 이후 위치를 가린다는 규칙이 정해져 있기 때문입니다. QKV의 비교·전달 방법은 학습하지만 이 규칙은 학습하지 않습니다.</p></details></section><footer><p><a href="0026-day02-attention-journey.html#map-comparison">Attention Map 비교</a> · <a href="0010-causal-attention.html">Chapter 3 셀 1</a> · <a href="../class-notes/day-02.md">Day 2 노트</a></p><p>어느 숫자가 왜 1인지 헷갈리면 그 행·열을 알려 주세요. 같이 따라가 보겠습니다.</p><p class="source">근거: Chapter 3 셀 1·교안 PDF 119쪽. 공식 문서: <a href="https://docs.pytorch.org/docs/stable/generated/torch.triu.html">torch.triu</a>, <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.register_buffer">register_buffer</a>.</p></footer></body></html>

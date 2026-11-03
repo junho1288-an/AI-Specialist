@@ -128,6 +128,59 @@ assert strings == text
 - **예시**: 입력 ID `(2,3)` → 임베딩 `(2,3,8)` → 블록 → 어휘 크기 32의 logits `(2,3,32)`. 마지막 위치 점수에서 다음 ID를 고른다.
 - **기억하기**: 시작 토큰 4개에 새 토큰 10개를 붙이면 14개다. `eval()`은 dropout 평가 모드, `no_grad()`는 기울기 기록 제어다. 이 교안 모델은 무작위 초기화이며 아직 사전학습 가중치를 로드하지 않는다.
 
+### 환경 질문: VS Code에서 Conda 노트북 사용
+
+- Python 인터프리터와 노트북의 커널을 모두 `env_aias_test`로 선택한다. VS Code 직접 실행에서는 `jupyter lab` 서버를 따로 켤 필요가 없다.
+- **예시**: `.ipynb` 오른쪽 위 `Select Kernel` → `Select Another Kernel` → `Python Environments` → `env_aias_test`. 셀의 `print(sys.executable)`이 `C:\ProgramData\miniconda3\envs\env_aias_test\python.exe`이면 목표 환경이다.
+- 순서는 [VS Code 설정 가이드](../PYTHON-SETUP.md)에 정리했다. 기본 설정 경로를 바꿔도 이전에 선택된 커널은 별도 확인한다.
+
+### Python 질문: 괄호 안인데 왜 문자열일까?
+
+- 맞다. 이 코드에는 **문자열 바깥의 쉼표가 없어** 튜플이 아니다. 괄호는 긴 표현식을 여러 줄로 묶는 역할이다. 문자열 안의 `Hello,`에 있는 쉼표는 텍스트일 뿐이다.
+- **예시**: `("hello" "world")`는 인접한 문자열 리터럴이 합쳐진 `"helloworld"`(str), `("hello", "world")`는 원소 2개의 tuple이다. 하나짜리 튜플도 `("hello",)`처럼 쉼표를 붙인다.
+- 교안 문자열도 자동으로 공백이 추가되지 않아 `terracesof`로 붙는다. 띄어쓰기를 원하면 `"terraces "` 또는 `" of..."`처럼 문자열 안에 공백을 넣는다. 빈 튜플은 예외적으로 `()`로 쓴다.
+
+### 환경 질문: 노트북 자동완성
+
+- **브라우저 JupyterLab**: 코드 셀 편집 중 일부 이름을 적고 `Tab`으로 자동완성 후보를 연다. 버전에 따라 `Settings → Settings Editor → Code Completion → Enable autocompletion`을 켜면 입력 중에도 후보가 표시된다.
+- **VS Code 노트북**: Python·Jupyter·Pylance 확장이 활성화되어 있으면 IntelliSense(코드 제안)를 쓸 수 있다. `Ctrl+Space`로 후보를 직접 요청하고, Tab 또는 Enter로 선택한다.
+- **예시**: 먼저 `import torch` 셀을 실행한 뒤 다음 코드 셀에서 `torch.ten`을 입력하고 자동완성을 요청하면 `tensor` 같은 후보를 확인할 수 있다. 커널 기반 후보는 import·변수 정의 셀을 먼저 실행해야 잘 표시된다.
+- 일반 자동완성은 함수·변수 이름 제안이며, AI가 여러 줄을 생성하는 기능은 별도 확장·설정이 필요하다.
+
+출처: [JupyterLab 자동완성](https://jupyterlab.readthedocs.io/en/stable/user/completer.html), [VS Code 노트북](https://code.visualstudio.com/docs/datascience/jupyter-notebooks).
+
+### 환경 질문: 함수 인자·설명·정의 확인하기
+
+- **화면별 단축키**: 브라우저 Jupyter에서는 import를 실행하고 코드 셀을 편집 중일 때 괄호 안에서 `Shift+Tab`을 시도한다. VS Code의 인자 힌트는 `Ctrl+Shift+Space`다. 사용자 환경에서 Shift+Tab이 동작하지 않았으며 원인은 아직 확인되지 않았다.
+- **단축키가 안 될 때 예시**: `import requests`를 먼저 실행한 뒤 새 셀에 `requests.get?`를 적고 `Shift+Enter`로 실행한다. 또는 `help(requests.get)`를 실행한다. URL 요청 없이 도움말만 확인한다. 미완성 `requests.get(` 줄과 같은 셀에서 실행하지 않는다.
+- 사용 화면은 **브라우저**로 확인했다. JupyterLab이면 명령 팔레트에서 `Show Contextual Help`를 검색해 도움말 패널을 열고 함수 호출에 커서를 둔다. Shift+Tab은 셀을 선택만 한 상태가 아니라 코드 안에 커서가 있는 편집 상태에서 시도한다. 커널이 연결되고 import가 실행되어 있어야 한다. 실제 단축키 충돌·버전 문제인지까지는 아직 확인되지 않았다.
+- **예시**: 새 셀에서 `requests.get?`를 실행하면 인자와 문서, `requests.get??`는 가능한 경우 Python 소스를 보여준다. Python 표준 방식은 `help(requests.get)`다. `?`·`??`는 IPython 노트북용 문법이다.
+- **인자 목록**: `import inspect` 후 `print(inspect.signature(requests.get))` → `(url, params=None, **kwargs)`. url은 필수, params는 선택, `**kwargs`는 timeout·headers 같은 이름 붙은 옵션을 전달한다. 여기 보이는 세 항목이 지원 옵션의 전부라는 뜻은 아니다. 자세한 전달 대상은 `help(requests.sessions.Session.request)`로 확인한다.
+- **정의 코드 보기**: `print(inspect.getsource(requests.get))`. VS Code 노트북에서는 함수 이름 위에서 `F12`(정의로 이동), `Alt+F12`(정의 미리 보기)를 쓸 수 있다. 실제 사용하는 Python 환경·언어 서버에 따라 이동 가능 여부가 달라진다.
+
+출처: [IPython 도움말](https://ipython.readthedocs.io/en/stable/interactive/python-ipython-diff.html#accessing-help), [Requests API](https://requests.readthedocs.io/en/latest/api/#requests.get). 설치 환경의 get 시그니처도 확인했다.
+
+### Python 질문: assert 조건, 메시지
+
+- **문법**: `assert 조건, "조건이 거짓일 때 표시할 메시지"`. 조건이 True면 다음 줄로 진행하고, False면 `AssertionError`를 발생시킨다. 처리하지 않으면 현재 셀 실행이 그 지점에서 중단된다.
+- 교안의 `len(token_ids) > max_length`는 원본 토큰 수가 입력 길이보다 커야 한다는 뜻이다. 개수는 정수이므로 `len(token_ids) >= max_length + 1`과 같다. 쉼표 뒤 문자열은 성공할 때 출력하는 문장이 아니라 실패할 때의 설명이다.
+- **예시**: max_length=4일 때 토큰 5개는 통과, 4개는 실패한다. 입력 `[a,b,c,d]`와 정답 `[b,c,d,e]`를 만들려면 원본에 e까지 필요하기 때문이다. ‘정확히 5개’가 아니라 ‘최소 5개’이므로 6개 이상도 통과한다.
+- 메시지는 `"토큰 수는 최소 max_length+1개여야 합니다"`로 쓰면 더 분명하다. assert는 개발 중 가정 확인용이며, Python을 `-O` 최적화 옵션으로 실행하면 생략될 수 있다.
+
+### Python 질문: for i in range(시작, 끝, 간격)
+
+- **문법**: `for i in range(start, stop, step):`는 start부터 step씩 이동한 정수를 i에 넣으며 들여쓴 코드를 반복한다. 양의 step에서는 **stop 미만까지만** 반복한다. stop 자체는 포함하지 않는다.
+- 교안의 시작은 `0`, 끝은 `len(token_ids) - max_length`, 간격은 `stride`다. i는 원본 토큰에서 샘플을 자르기 시작할 인덱스다.
+- **예시**: 토큰 10개, max_length=4, stride=2라면 `range(0,6,2)` → i는 `0,2,4`. 각 입력은 인덱스 0~3, 2~5, 4~7이고 정답은 각각 한 칸 뒤다. i=6은 정답 마지막에 인덱스 10이 필요하지만 원본은 0~9뿐이어서 제외한다.
+- 마지막 입력 뒤의 **다음 토큰 정답까지 확보**하기 위해 끝을 이렇게 정한다. stride가 정한 시작점만 방문하므로, 가능한 모든 샘플을 쓰는 것은 아니다. 이 예시에서 i=5도 가능하지만 간격 2 경로에는 포함되지 않는다. 모든 시작점을 보려면 stride=1을 사용한다.
+
+### PyTorch 질문: 왜 조각을 torch.tensor로 바꿀까?
+
+- **Tensor(텐서)**는 PyTorch가 수치 계산에 사용하는 다차원 배열이다. 리스트로 자른 토큰 ID를 모델과 DataLoader가 다루기 좋은 형태로 준비한다. shape·dtype을 가지며, 필요할 때 GPU로 옮겨 연산할 수 있다. `torch.tensor(...)` 자체가 GPU로 옮기는 것은 아니다.
+- **예시**: `input_chunk = [10,20,30,40]` → `torch.tensor(input_chunk)`는 shape `(4,)`, dtype `torch.int64`인 ID 텐서다. 이 정수 텐서를 Embedding에 넣으면 각 ID의 실수 벡터를 꺼낸다. 변환 자체가 임베딩이나 학습은 아니다.
+- `self.input_ids`는 **여러 샘플 텐서를 모은 Python 리스트**이고, append는 이번 샘플 하나를 추가한다. DataLoader가 여러 텐서를 쌓으면 예를 들어 `(4,)` 샘플 2개가 입력 배치 `(2,4)`가 된다. targets도 같은 방식으로 준비한다.
+- 리스트의 `+`는 연결이지만 텐서의 `+`는 원소별 덧셈이다. 모델은 이런 배열 연산을 사용한다. 토큰 ID 정수 자체는 기울기를 학습하지 않으며, 이후 Embedding·모델의 파라미터를 학습한다.
+
 ## 오늘 핵심 3줄
 
 세 번째 실습 복습: [GPTDatasetV1 HTML 수업과 7개 연습 문제](../lessons/0004-gpt-dataset.html). 예: 9토큰에서 길이=4, stride=2이면 시작점 0·2·4의 샘플 3개를 만든다. __len__은 샘플 수, __getitem__은 같은 번호의 입력·정답 쌍을 반환한다.

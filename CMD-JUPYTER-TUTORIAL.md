@@ -144,4 +144,4 @@ jupyter lab
 ## 참고
 
 - [Jupyter 공식 설치 안내](https://jupyter.org/install): JupyterLab과 Notebook의 설치·실행 명령.
-- [기존 VS Code 가이드](PYTHON-SETUP.md)는 앞서 만든 `.venv` 기준이다. 이번에 성공한 Conda 환경을 VS Code에서도 쓰려면 인터프리터와 노트북 커널로 `env_aias_test`를 선택한다.
+- [VS Code 설정 가이드](PYTHON-SETUP.md): 동일한 Conda 환경 `env_aias_test`를 Python 인터프리터와 노트북 커널로 선택하는 순서다. VS Code에서 직접 실행할 때는 `jupyter lab`을 따로 켤 필요가 없다.
