@@ -2,6 +2,14 @@
 
 ## Knowledge
 
+- Day 3 ResNet shape 수업: `02_DNN_CNN.pdf` 43쪽 전체 텍스트와 실습 셀 6·9·11·13·15를 확인했다. PDF 40쪽의 ResNet 표 이미지를 추출·육안 확인하고 `assets/day03-resnet-slide.png`에 보관했다. [9단계 수업](lessons/0028-day03-resnet18-shape-journey.html)은 노트북 CIFAR 수정 모델을 기준으로 한다. [torchvision 0.20 ResNet 소스](https://docs.pytorch.org/vision/0.20/_modules/torchvision/models/resnet.html)와 대조했고 실제 빌더의 B=2 forward shape를 검증했다. 학습된 모델의 인식 성능을 검증한 것은 아니다.
+
+- [Day 3 ResNet18·CIFAR-10 실습](vision/01_ResNet18_CIFAR10.ipynb): 29개 셀 구성·함수 목록을 2026-11-04 확인했다. 전처리·ResNet 구성·학습/평가·추론·성능 분석·activation/kernel/Grad-CAM 시각화와 추가 실습을 포함한다. 전체 실행은 하지 않았다. 이후 질문은 해당 셀 원문을 읽고 설명한다.
+
+- Vision Intro 코드: `01_Intro.pdf` 31쪽 전체 텍스트를 확인했고 Python API는 17쪽에서 식별했다(전 페이지 이미지 OCR·육안 검사는 미수행). [코드 모음](vision/01_Intro-code-snippets.md)에 원문 API 4개와 보충 예제를 구분했다. torchvision 0.20 [ToTensor](https://docs.pytorch.org/vision/0.20/generated/torchvision.transforms.ToTensor.html)·[Normalize](https://docs.pytorch.org/vision/0.20/generated/torchvision.transforms.Normalize.html), Pillow Image, PyTorch unsqueeze 공식 문서를 대조했고 로컬 0.20.1·torch 2.5.1로 계산을 검증했다.
+
+- **Day 3 / Vision 교안:** [교안 목록](vision/README.md). `01_Intro.pdf` 31쪽, `02_DNN_CNN.pdf` 43쪽, `03_Attention.pdf` 59쪽, `04_Applications.pdf` 101쪽. 2026-11-04 각 첫 2쪽과 Intro의 과정 개요를 확인했다. 전체 본문 검토·실습 실행은 아직 하지 않았다. Intro 2쪽에는 DNN·CNN/ResNet → Transformer·ViT → Detection/DETR·Tracking·Segmentation/U-net·생성 모델의 일정이 제시되어 있으며, 전부 오늘 배웠거나 시험에 확정 출제된다는 뜻은 아니다.
+
 - Day 2 Attention 수업 근거: `llm_hands_on/pdf/app_sp_slides_20261013.pdf` **104~120쪽** 본문을 2026-11-03 확인했다. 문맥·QKV 역할·학습 의미·점수·스케일·가중합·softmax·mask·multi-head를 Chapter 3 셀 1~5와 대조했다. [시각화 수업](lessons/0026-day02-attention-journey.html), [복습 카드](reference/day02-attention-journey.html). PDF 109쪽의 자기 자신 우선 주목은 항상 성립하는 성질로 일반화하지 않는다. 원 논문 §3.2.1~2 및 PyTorch Linear로 보충 검증했다.
 
 - [AI인증시험_출제포인트.pdf](AI인증시험_출제포인트.pdf) 1쪽: 2026-11-03 본문을 확인했다. LLM·RAG·Data·Vision·On-device의 평가 관점과 2026-11-17 시험 표기를 담고 있다. 출제 전 `EXAM-SCOPE.md`에서 사용자 확정 제외 범위와 함께 읽는다.

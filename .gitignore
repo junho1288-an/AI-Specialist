@@ -5,3 +5,9 @@
 .env
 .env.*
 !.env.example
+
+# Downloaded dataset cache; reproduce through the Vision notebooks.
+/vision/data/
+
+# Local classroom network-share locations.
+/share_folder_addresses.txt
