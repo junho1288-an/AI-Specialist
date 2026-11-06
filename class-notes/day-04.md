@@ -64,6 +64,13 @@
 
 ## 질문과 오류
 
+### 튜플 → tensor → stack으로 logits 배치 `(4,4)` 만들기
+
+- 샘플 하나의 클래스 점수를 튜플 `(1.0,2.0,3.0,4.0)`로 표현한다. 튜플은 Python의 값 묶음이며 텐서 shape·dtype·device 속성이 없다. `torch.tensor(튜플, dtype=torch.float32)`로 shape `(4,)`인 실수 텐서를 만든다. 여기서4는 클래스 점수 개수이며 이미지 픽셀 크기가 아니다.
+- 예: s0=(1,2,3,4), s1=(5,6,7,8), s2=(9,10,11,12), s3=(13,14,15,16). 각각 tensor로 바꾼 t0~t3를 `torch.stack((t0,t1,t2,t3), dim=0)`으로 묶으면 행마다 한 샘플인 `(4,4)`다. stack의 첫 인자는 같은 shape 텐서들의 묶음, dim은 새 축을 넣을 위치다. 원래 튜플을 직접 stack에 넣지 않고 먼저 텐서로 바꾼다.
+- `torch.tensor((s0,s1,s2,s3), dtype=torch.float32)`도 같은 결과다. tensor는 숫자 데이터로 텐서를 생성하고 stack은 기존 텐서들을 새 축으로 묶는다. tensor의 dtype은 원소 자료형, device는 CPU/GPU 위치, requires_grad는 미분 기록 여부다. 일반 데이터 예제에서는 기본 False이며, 실제 모델 logits에는 순전파의 gradient 연결이 자동으로 붙으므로 새 torch.tensor(logits)로 다시 감싸지 않는다.
+- dim=0 결과 첫 행은 `[1,2,3,4]`, dim=1이면 `[1,5,9,13]`이다. 이번에는 두 축 길이가 모두4라 결과 shape만으로 잘못된 축을 알아낼 수 없으므로 행의 값도 본다. 대조 예: `(4,)` 텐서3개는 dim=0에서 `(3,4)`, dim=1에서 `(4,3)`. 생성 예제의 이름을 logits로 붙인다고 모델 계산이 일어난 것은 아니며 설명용 점수다. 로컬 PyTorch로 두 방법의 일치와 쌓이는 방향을 확인했다.
+
 ### ResNet 실습 0~8번 줄별 해설 노트북
 
 - [새 Jupyter 해설](../practice/day-04/resnet18-line-by-line.ipynb): 원본 코드의 각 줄을 읽고, 이미지 흐름·F(x)+x·loss에서 가중치 갱신까지 연결한다. 예: `scaler.step(optimizer)`는 가중치 갱신, `scaler.update()`는 확대 배율 갱신이다.
