@@ -8,7 +8,7 @@
   current=Math.min(Math.max(i,0),steps.length-1);
   steps.forEach((s,j)=>s.hidden=j!==current);
   buttons.forEach((b,j)=>{if(j===current)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');});
-  document.getElementById('step-progress').textContent=`${current+1} / ${steps.length} 단계 · 각 단계 설명 → shape 문제 → 다음 단계`;
+  document.getElementById('step-progress').textContent=`${current+1} / ${steps.length} 단계 · 이론 → shape·코드 문제 → 피드백 → 다음 단계`;
   document.getElementById('step-prev').disabled=current===0;
   document.getElementById('step-next').disabled=current===steps.length-1;
  };

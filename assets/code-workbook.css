@@ -1,0 +1,9 @@
+.code-workbook{margin:32px 0;padding:24px;border:2px solid #43816c;border-radius:12px;background:#fafcfb}
+.code-workbook h3{margin-top:0}.workbook-theory{border-left:4px solid #b68b45;padding:0 16px}.workbook-shape{font-weight:600;background:#e9f2ed;padding:12px;border-radius:6px}
+.code-workbook pre{overflow:auto;white-space:pre;line-height:1.6;font-size:.92rem}.code-workbook textarea{box-sizing:border-box;width:100%;font:inherit;line-height:1.6;padding:12px;border:1px solid #9cafaa;border-radius:6px;resize:vertical}
+.code-workbook form label{display:block;margin:14px 0}.code-workbook input{display:block;box-sizing:border-box;width:100%;max-width:600px;font:1rem Consolas,monospace;padding:10px;border:1px solid #9cafaa;border-radius:5px}
+.code-workbook button{font:inherit;cursor:pointer;background:#276858;color:white;border:0;border-radius:6px;padding:10px 14px;margin:8px 8px 8px 0}.code-workbook button:disabled{opacity:.5;cursor:default}.workbook-actions{display:flex;flex-wrap:wrap}.workbook-result{background:#edf3eb;padding:18px;margin-top:16px;border-radius:8px}.workbook-result[hidden]{display:none}.workbook-transfer{border-top:1px solid #cfdbd4;padding-top:14px;font-size:.94rem}
+.workbook-recall>:not(.code-workbook):not(h2){display:none}.workbook-recall .workbook-theory{display:none}
+.code-workbook :focus-visible{outline:3px solid #b1741a;outline-offset:3px}
+@media(max-width:650px){.code-workbook{padding:15px}.code-workbook pre{font-size:.8rem}}
+@media print{.code-workbook button{display:none}.workbook-recall>:not(.code-workbook):not(h2),.workbook-recall .workbook-theory{display:block}.code-workbook{break-inside:avoid}.workbook-result[hidden]{display:none}}

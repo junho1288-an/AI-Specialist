@@ -1,0 +1,25 @@
+diff --git a/.vscode/settings.json b/.vscode/settings.json
+index 4b5a294..00b16fd 100644
+--- a/.vscode/settings.json
++++ b/.vscode/settings.json
+@@ -1,4 +1,5 @@
+ {
++    "python.defaultInterpreterPath": "C:/ProgramData/miniconda3/envs/env_aias_test/python.exe",
+     "python-envs.defaultEnvManager": "ms-python.python:conda",
+     "python-envs.defaultPackageManager": "ms-python.python:conda"
+-}
+\ No newline at end of file
++}
+diff --git a/Chapter_3_Excercise_Attention.ipynb b/Chapter_3_Excercise_Attention.ipynb
+index f24acdf..8e6032a 100644
+--- a/Chapter_3_Excercise_Attention.ipynb
++++ b/Chapter_3_Excercise_Attention.ipynb
+@@ -350,7 +350,7 @@
+  ],
+  "metadata": {
+   "kernelspec": {
+-   "display_name": "Python 3 (ipykernel)",
++   "display_name": "env_aias_test",
+    "language": "python",
+    "name": "python3"
+   },

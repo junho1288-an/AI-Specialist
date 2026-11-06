@@ -2,6 +2,29 @@
 
 ## 현재 수업일
 
+- Day 4 후속 요청(작성 완료일 2026-11-06): ResNet 원본 실습 8번까지의 자세한 줄별 해설을 `practice/day-04/resnet18-line-by-line.ipynb`에 작성했다. 원본 0~8번의 389개 비어 있지 않은 줄을 설명하고 shape·그림·9개 작은 실행 실험을 포함한다. 새 커널에서 CPU 예제 9개를 순차 실행해 검증하고 출력·그림을 저장했다. 시험 범위는 6번까지 유지하고 7~8번은 추가 이해용이다. 학습자 숙달 판정은 아니다.
+- **Day 4 실습 진도 최신 확인: 사용자 전달 기준 U-Net까지 진행 완료.** 이전의 “ResNet만 진행” 기록은 당시 상태이며 현재 진도로 적용하지 않는다. `vision/04_Unet.ipynb` 셀 7의 Conv3×3 padding=1(공간 크기 유지)과 Up.forward의 F.pad(skip 크기 맞춤)을 구분해 설명·출제한다. 기존 VISION09~10에도 포함되어 있다. 수강·실습 진행은 독립 구현 숙달과 구분한다.
+
+- 코드 표시 선호(2026-11-05): 패키지 이름을 T·nn·F 등으로만 줄여 쓰면 소속을 알기 어려우므로 각 코드 블록에 필요한 import를 함께 표시한다. 학습 문제에는 torchvision.transforms·torch.nn처럼 소속이 드러나는 이름을 우선하고, 원본 별명은 대응 import와 함께 설명한다. ResNet 9단계 HTML의 이론 코드와 10개 문제에 적용했다.
+
+- Day 4 시험 범위 최신 안내: DETR 실습은 번호 붙은 절 `13) Encoder self-attention 시각화`까지 포함. 현재 `vision/03_DETR.ipynb` 전체 셀 30까지이며, 14·15절 AttentionVisualizer와 인터랙티브 실행은 제외한다. EXAM-SCOPE에 반영했다. VISION12는 범위 내 기존 셀 8·18 문제라 유지하며 PDF 매칭·loss 이론까지 제외하지 않는다.
+
+- Day 4 사용자가 DETR을 배우며 사전학습 모델을 불러 사용한다고 전달했다. 교안 `04_Applications.pdf` 29~33쪽과 실습 `03_DETR.ipynb` 셀 12·18을 연결해 `lessons/0029-day04-detr-matching-loss.html`을 작성했다. 종류·박스 비용의 공동 매칭과 이후 loss를 구분하고 no-object를 설명한다. 실습 전체 완료·독립 이해는 미확인이다.
+
+- Day 4 후속 이론 진도: 사용자가 `vision/04_Applications.pdf` 8쪽 부근의 Precision·Recall·F1·mAP를 질문했다. 6~9쪽을 확인해 Day 4 노트에 기록했다. 실습은 별도 업데이트 전까지 ResNet만 진행한 상태로 유지한다. confidence 기준과 IoU 기준, 단일 기준의 F1과 PR 곡선을 요약하는 AP를 구분해 설명한다.
+
+- Day 4 학습 순서 선호: 사용자는 ResNet HTML에서 이론을 충분히 공부하고 각 단계의 코드 문제를 먼저 푼 뒤 Jupyter에서 직접 실습하기를 원한다. 기존 `lessons/0028-day03-resnet18-shape-journey.html`을 유지하며 Day 4 확장으로 단계별 이론 연결·이유 질문·코드 빈칸·힌트·시도 후 해설을 추가했다. Python 실행은 후속 Jupyter 단계이며 HTML의 텍스트 확인을 실행 검증·숙달로 표현하지 않는다.
+- 위 확장의 코드 문제 10개는 예시 답안을 채워 로컬 PyTorch 2.5.1 CPU에서 전처리 수치·residual·stage shape·pooling·FC·학습/평가·혼동행렬을 실행 검증했다. HTML의 9단계 연결·로컬 링크·ID도 확인했다. 브라우저 UI 실행 검증은 미수행이다. 코드 문제 입력은 새로고침하면 초기화된다.
+
+- Day 4 사용자가 CLIP 코드(“32페이지”)를 시험 대비 후보에 추가 요청했다. 현재 `vision/03_Attention.pdf`에서는 32쪽이 Swin 구조이고, CLIP 의사 코드 그림은 42쪽 Training (1/2)에 있음을 직접 확인했다. `vision/day04-clip-exam-candidate.md`와 EXAM-SCOPE에 투영·정규화·유사도·양방향 CE 후보를 반영했다. 향후 문제에 포함하되 개별 출제 확정으로 표현하지 않는다.
+
+- **Day 4 / 2026-11-05 (Asia/Seoul) · Vision 이어서**. 사용자가 이론은 `vision/03_Attention.pdf` 30쪽부터 시작하며, 실습은 아직 ResNet만 진행했다고 확정했다. PDF 30번째 페이지는 Swin Transformer 도입 배경이다. 실습 파일은 `vision/01_ResNet18_CIFAR10.ipynb`이며 세부 도달 셀은 미확인이다. ViT·DETR·U-Net 실습을 이미 배웠다고 가정하지 않는다.
+- 이론과 실습 진도를 분리한다. 현재 코드 복습은 ResNet에 연결하고, Vision 모의시험의 VISION06~12는 이후 실습 대비로 둔다. 에이전트의 교안 미리보기나 문제지 제작을 사용자 진도·숙달로 처리하지 않는다.
+- 오늘부터 새 질문·설명·예시는 `class-notes/day-04.md`, 실습·제출 답안은 `practice/day-04/`에 기록한다. 새 HTML은 기존 순번을 이어 파일명·배지에 `day04`를 사용하며, 참고 문서는 `reference/day04-topic.html` 형식으로 만든다. 기존 Day 1~3 자료는 보존한다.
+- Day 4 시작 복습은 Day 3 이미지 배치·분류 logits/labels shape와 Day 1 next-token shift 두 문항이다. 현재 미응답이며 교안·답변 확인 뒤 작은 목표와 기본 과제를 지정한다. `teach`의 짧은 설명→사용자 시도→피드백 절차를 이어간다.
+
+## Day 3에서 이어받은 내용
+
 - 2026-11-04 출제 포인트 PDF와 실습 코드 기반의 Jupyter 모의시험을 요청받았다. `practice/day-03/llm-mock-exam.ipynb`(기본 14문항 90점·Chapter 7 확장 2문항 10점), `vision-mock-exam.ipynb`(12문항 100점), `mock-exam-guide.md`를 작성했다. 빈칸·부분 구현, 독립 실행 가능한 문제별 확인 셀, 이유·shape 설명란을 제공했다. 제작자 검증과 사용자 숙달은 구분하며 현재 사용자 제출 전이다. 기본 LLM Chapter 3~6 대비를 먼저 하고 Chapter 7은 확장으로 구분한다.
 
 - 시험 형식 최신 확인(2026-11-04): 사용자가 `????` 빈칸 넣기 또는 class·function이 제공된 상태에서 부분 코딩이라고 구체화했다. 시험 대비는 전체 코드 독립 작성보다 문맥·API·shape·축을 이해하고 해당 구간을 완성하는 문제 중심으로 한다. 20시간은 이 형식의 핵심 대비·오답 교정 가안으로 재평가하며 실제 풀이 전 충분함을 단정하지 않는다.
@@ -20,9 +43,9 @@
 
 - 시험 범위는 `EXAM-SCOPE.md`가 기준이다. 사용자는 Chapter 2의 Tokenizer 비교 이후와 온라인 파일 다운로드를 시험에서 제외한다고 확정했다. `AI인증시험_출제포인트.pdf` 1쪽을 읽었으며 PDF에 적힌 시험일은 2026-11-17이다.
 
-- **Day 3 / 2026-11-04 (Asia/Seoul) · Vision**. 사용자가 3일차 시작과 교안 위치 `vision/`을 확정했다.
-- 새 질문·설명은 `class-notes/day-03.md`, 실습은 `practice/day-03/`에 기록한다. 이전 주제의 후속 질문도 현재 작성일 노트에서 이전 기록을 연결한다.
-- 새 HTML 수업은 기존 순번을 이어가되 파일명에 `day03`를 포함하고 제목·배지는 Day 3로 표시한다. 새 참고 자료도 `reference/day03-topic.html`처럼 일자를 구분한다. 공통 assets는 재사용한다.
+- Day 3 / 2026-11-04의 분야는 Vision이었으며 교안 위치는 `vision/`이다.
+- Day 3 기록은 `class-notes/day-03.md`, 실습은 `practice/day-03/`에 있다. 이후 후속 질문은 현재 수업일 노트에서 이전 기록을 연결한다.
+- Day 3 HTML·참고 자료에는 `day03` 표기를 유지한다. 새 자료의 일자는 위 현재 수업일 기준을 적용하며 공통 assets는 재사용한다.
 - Vision 교안은 `01_Intro.pdf`(31쪽), `02_DNN_CNN.pdf`(43쪽), `03_Attention.pdf`(59쪽), `04_Applications.pdf`(101쪽)다. 각 첫 2쪽과 Intro 2쪽의 일정만 확인했다. 실제 당일 도달 페이지·실습 노트북은 미확인이다. Vision의 세부 일정상 1일차와 전체 과정의 Day 3을 혼동하지 않는다.
 - 기존 Day 1~2 산출물은 보존한다. Day 2 Chapter 2 최종 실기는 제출·채점되었으며 아래 기록과 피드백 보고서에서 상태를 확인한다.
 

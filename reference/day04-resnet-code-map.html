@@ -1,0 +1,16 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Day 4 · ResNet 이론과 시험 코드 연결</title><link rel="stylesheet" href="../assets/lesson.css"></head><body class="course">
+<span class="badge">DAY 4 · 풀이 후 복습</span><h1>이론을 어떤 코드로 쓰나요?</h1><p><a href="../lessons/0028-day03-resnet18-shape-journey.html">9단계 수업으로 돌아가기</a> · <a href="day03-resnet18-shapes.html">전체 shape 표</a></p>
+<p>현재 실습은 CIFAR용 ResNet18입니다. 코드의 실제 축은 B,C,H,W이며, 강의 그림의 B,C,W,H 표기와 구분합니다. 아래는 예시 답안의 핵심이므로 먼저 문제를 시도한 뒤 읽으세요.</p>
+<p><b>시험 범위 업데이트:</b> 원본 노트북 6) 성능 분석(전체 셀 17)까지 포함합니다. 아래 1~9단계는 HTML 설명 번호이며 모두 범위 내 내용에 연결됩니다. 원본 7번 이후 시각화·Grad-CAM·Receptive Field·t-SNE·ONNX는 제외합니다.</p><table><tr><th>단계</th><th>이론 → 코드</th><th>모의시험 연결</th></tr>
+<tr><td>1 이미지·정답</td><td>입력과 정수 라벨을 TensorDataset으로 묶기</td><td>VISION02 데이터 구성</td></tr>
+<tr><td>2 전처리</td><td>train: Crop→Flip→ToTensor→Normalize / test: ToTensor→Normalize</td><td>VISION01 변형</td></tr>
+<tr><td>3 배치</td><td>DataLoader(dataset, batch_size=…, shuffle=train, drop_last=False)</td><td>VISION02</td></tr>
+<tr><td>4 첫 Conv</td><td>Conv2d(3,64,3,stride=1,padding=1), maxpool=Identity()</td><td>VISION03 stem</td></tr>
+<tr><td>5 residual</td><td>shape를 맞춘 뒤 residual+identity, ReLU</td><td>BasicBlock 보충 문제</td></tr>
+<tr><td>6 stage</td><td>layer1→layer2→layer3→layer4</td><td>VISION03 구조 이해 보충</td></tr>
+<tr><td>7 평균·펼침</td><td>AdaptiveAvgPool2d((1,1))→flatten(start_dim=1)</td><td>기존 shape 과제</td></tr>
+<tr><td>8 FC</td><td>Linear(model.fc.in_features, num_classes)</td><td>VISION03 head</td></tr>
+<tr><td>9 학습·평가</td><td>모드·gradient 기록 구분, loss.backward(), optimizer.step(), 정확도 집계</td><td>VISION04~05</td></tr></table>
+<h2>한 예시로 다시 연결</h2><p>RGB 8장 → (8,3,32,32) → 특징 추출 (8,512,4,4) → 채널별 평균 (8,512,1,1) → flatten (8,512) → FC logits (8,10). 정답 labels는 (8,) long입니다. loss에는 raw logits를 넣고, 예측 클래스는 logits.argmax(dim=1)로 구합니다.</p>
+<h2>혼동하기 쉬운 것</h2><ul><li>Normalize는 shape를 바꾸지 않습니다. train/test 모두 같은 mean·std를 사용합니다.</li><li>residual 덧셈은 concat과 다릅니다. 채널 수를 더하지 않습니다.</li><li>eval은 모듈 동작, no_grad는 gradient 기록을 제어합니다.</li><li>마지막 배치가 작으면 loss 평균은 샘플 수로 가중해야 합니다.</li><li>혼동행렬은 행=실제 라벨, 열=예측입니다.</li></ul>
+<p>모르는 단계 번호와 자신의 설명을 보내 주세요. 다음 수업일에는 숫자·배치 수를 바꿔 다시 설명해 보고, 이후 3·7수업일 뒤에도 확인합니다.</p><p class="source">근거: <a href="../vision/01_ResNet18_CIFAR10.ipynb">ResNet 실습 셀 6·9·11·15·17</a>, <a href="../vision/02_DNN_CNN.pdf">DNN/CNN 교안</a>, <a href="https://docs.pytorch.org/vision/0.20/_modules/torchvision/models/resnet.html">torchvision ResNet 구현</a>. 문제지: <a href="../practice/day-03/vision-mock-exam.ipynb">Vision 모의시험</a>.</p></body></html>

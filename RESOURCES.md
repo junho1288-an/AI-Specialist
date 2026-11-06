@@ -2,6 +2,12 @@
 
 ## Knowledge
 
+- [Day 4 ResNet 0~8번 줄별 Jupyter 해설](practice/day-04/resnet18-line-by-line.ipynb): 원본 전체 셀 3~21의 코드 셀 11개를 누락 없이 해설했다. 원문과 보충 예제를 구분하고, CPU 예제 9개는 새 커널에서 실행 검증했다. 7~8번은 시험 범위 밖의 추가 이해용이다. 기존 [코드 복습표](reference/day04-resnet-code-map.html)를 요약 자료로 함께 사용한다.
+
+- Day 4 DETR: [매칭·loss 그림 수업](lessons/0029-day04-detr-matching-loss.html), [요약](reference/day04-detr-loss.html). 교안 `04_Applications.pdf` 29~33쪽, 실습 셀 12·18과 공식 [HungarianMatcher](https://github.com/facebookresearch/detr/blob/main/models/matcher.py), [SetCriterion](https://github.com/facebookresearch/detr/blob/main/models/detr.py)를 대조했다. 매칭의 클래스·L1·GIoU 합산 비용, 학습 loss와의 차이, 미배정 no-object 처리를 구분한다.
+
+- Day 4 ResNet 코드 연결 확장: [기존 9단계 수업](lessons/0028-day03-resnet18-shape-journey.html)에 [Vision 모의시험](practice/day-03/vision-mock-exam.ipynb)의 VISION01~05와 residual·stage·pooling 보충 함수를 연결했다. [코드 복습표](reference/day04-resnet-code-map.html). 이론 학습 후 HTML에서 빈칸을 시도하고 Jupyter 실행으로 넘어간다. 원본 실습 셀 6·9·11·15·17과 기존 검증된 모의시험이 근거다.
+
 - Day 3 ResNet shape 수업: `02_DNN_CNN.pdf` 43쪽 전체 텍스트와 실습 셀 6·9·11·13·15를 확인했다. PDF 40쪽의 ResNet 표 이미지를 추출·육안 확인하고 `assets/day03-resnet-slide.png`에 보관했다. [9단계 수업](lessons/0028-day03-resnet18-shape-journey.html)은 노트북 CIFAR 수정 모델을 기준으로 한다. [torchvision 0.20 ResNet 소스](https://docs.pytorch.org/vision/0.20/_modules/torchvision/models/resnet.html)와 대조했고 실제 빌더의 B=2 forward shape를 검증했다. 학습된 모델의 인식 성능을 검증한 것은 아니다.
 
 - [Day 3 ResNet18·CIFAR-10 실습](vision/01_ResNet18_CIFAR10.ipynb): 29개 셀 구성·함수 목록을 2026-11-04 확인했다. 전처리·ResNet 구성·학습/평가·추론·성능 분석·activation/kernel/Grad-CAM 시각화와 추가 실습을 포함한다. 전체 실행은 하지 않았다. 이후 질문은 해당 셀 원문을 읽고 설명한다.

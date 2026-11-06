@@ -12,6 +12,7 @@ jupyter 노트북에서
 
 ## 학습 자료 바로가기
 
+- [Day 4 ResNet 실습 0~8번 줄별 해설 노트북](practice/day-04/resnet18-line-by-line.ipynb) — shape·잔차 연결 그림·학습 루프·작은 실행 예제. 시험 범위는 6번까지, 7~8번은 추가 이해용.
 - [Chapter 2 HTML 수업 목차](lessons/index.html)
 - [Chapter 3 Attention 셀별 수업](lessons/chapter-3.html)
 - [Chapter 4 GPT 셀별 수업](lessons/chapter-4.html)
