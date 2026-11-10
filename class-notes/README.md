@@ -48,6 +48,8 @@ practice/day-01/tensor-shapes.ipynb # 직접 실행할 연습 코드의 권장 �
 
 ## 수업별 필기
 
+- [Day 6 · 수업 시작](day-06.md) — 2026-11-10, 과목·교안 확인 대기.
+- [Day 5 · Basic Quantization](day-05.md) — 2026-11-09, 2nd_week/Practice_materials.
 - [Day 1](day-01.md)
 - [Day 2 · 2026-11-03](day-02.md)
 - [Day 3 · 2026-11-04 · Vision](day-03.md)

@@ -64,6 +64,13 @@
 
 ## 질문과 오류
 
+### 브라우저 Jupyter 자동완성·인자 도움말 설정 (2026-11-09 후속 질문)
+
+- 로컬 env_aias_test의 Notebook은 7.3.2다. 브라우저 상단 Settings → Settings Editor → Code Completion에서 Enable autocompletion과 Show the documentation panel을 켠다. 전자는 입력 중 후보 표시, 후자는 선택한 후보의 문서·시그니처 표시다. 단축키 변경은 Settings Editor → Keyboard Shortcuts에서 Completer 또는 Tooltip을 검색한다.
+- 예: `import torch` 셀을 먼저 실행하고 다음 코드 셀에서 `torch.st` 뒤 Tab으로 후보를 확인한다. `torch.stack(` 괄호 안에 커서를 놓고 Shift+Tab이면 함수 인자 도움말이다. 자동완성 목록이 열려 있으면 Esc로 닫은 뒤 시도한다. 코드 편집 모드여야 하고 선택 영역 없이 시도한다.
+- Shift+Tab이 안 되면 별도 셀에서 `torch.stack?` 또는 `help(torch.stack)`을 실행한다. `torch.stack(tensors, dim=0, *, out=None)`의 tensors는 묶을 텐서들, dim은 새 축 위치, out은 선택적 출력 저장 텐서이고 * 뒤 인자는 이름으로 전달한다. 인자 이름 완성 지원은 함수·커널에 따라 달라지므로 도움말로 확인한다.
+- 근거: 설치된 completer/tooltip 설정 스키마와 [공식 완성 기능 안내](https://jupyterlab.readthedocs.io/en/latest/user/completer.html). Notebook 7은 JupyterLab 기반 UI 구성요소를 사용한다. 새 수업일 번호는 아직 확인되지 않아 기존 노트에 후속 날짜를 명시했다.
+
 ### 튜플 → tensor → stack으로 logits 배치 `(4,4)` 만들기
 
 - 샘플 하나의 클래스 점수를 튜플 `(1.0,2.0,3.0,4.0)`로 표현한다. 튜플은 Python의 값 묶음이며 텐서 shape·dtype·device 속성이 없다. `torch.tensor(튜플, dtype=torch.float32)`로 shape `(4,)`인 실수 텐서를 만든다. 여기서4는 클래스 점수 개수이며 이미지 픽셀 크기가 아니다.
