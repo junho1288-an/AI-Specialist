@@ -1,0 +1,149 @@
+--- ts_practice cell 24
++++ ts_solution cell 24
+@@ -12,26 +12,13 @@
+     # train
+     model.train()
+     for batch_x, batch_y in train_loader:
+-      # (1) Move input and target tensors to the device (e.g., GPU)
+-      batch_x, batch_y = 
++      batch_x, batch_y = batch_x.to(device), batch_y.to(device)
++      pred = model(batch_x)[:, -1, 0]
++      loss = loss_fn(pred, batch_y)
+ 
+-      # (2) Pass the input (batch_x) through the model
+-      #     The model outputs shape [batch_size, sequence_length, 1]
+-      #     Take the prediction at the last timestep (index -1) and feature index 0
+-      #     → model(batch_x)[:, -1, 0]
+-      pred =
+-
+-      # (3) Compute the loss between pred and batch_y by using loss_fn
+-      loss =
+-
+-      # (4) Clear previous gradients to avoid accumulation
+-      optimizer.
+-
+-      # (5) Perform backpropagation to compute gradients
+-      loss.
+-
+-      # (6) Update the model parameters using the optimizer
+-      optimizer.
++      optimizer.zero_grad()
++      loss.backward()
++      optimizer.step()
+ 
+       total_train_loss += loss.item()
+ 
+@@ -42,19 +29,9 @@
+     model.eval()
+     with torch.no_grad():
+       for test_x, test_y in test_loader:
+-        # TODO
+-        # (1) Move input and target tensors to the device (e.g., GPU)
+-        test_x, test_y =
+-
+-        # (2) Pass the input (test_x) through the model
+-        #     The model outputs shape [batch_size, sequence_length, 1]
+-        #     Take the prediction at the last timestep (index -1) and feature index 0
+-        #     → model(test_x)[:, -1, 0]
+-        test_pred =
+-
+-        # (3) Compute the loss between test_pred and test_y by using loss_fn
+-        test_loss =
+-
++        test_x, test_y = test_x.to(device), test_y.to(device)
++        test_pred = model(test_x)[:, -1, 0]
++        test_loss = loss_fn(test_pred, test_y)
+         total_test_loss += test_loss.item()
+ 
+     avg_test_loss = total_test_loss / len(test_loader)
+--- ts_practice cell 28
++++ ts_solution cell 28
+@@ -1,15 +1,15 @@
+ def test(model, X_test, y_test):
+   model.eval()
+   with torch.no_grad():
+-    X_test = X_test.to(device)
+-    y_hat = model(X_test)
++    X_test = X_test.to(device)                     # (N, seq_len, 1)
++    y_hat = model(X_test)                          # (N, seq_len, 1)
+     test_predictions = y_hat[:, -1, 0]
+ 
+   test_predictions = test_predictions.cpu().numpy()
+   y_test = y_test.cpu().numpy()
+ 
+-  rmse = np.sqrt(mean_squared_error(, )) # TODO
+-  mape = mean_absolute_percentage_error(, ) # TODO
++  rmse = np.sqrt(mean_squared_error(y_test, test_predictions))
++  mape = mean_absolute_percentage_error(y_test, test_predictions)
+ 
+   return rmse, mape
+ 
+--- ts_practice cell 30
++++ ts_solution cell 30
+@@ -1,10 +1,10 @@
+ class Conv1DModel(nn.Module):
+   def __init__(self, input_size, hidden_size):
+     super(Conv1DModel, self).__init__()
+-    # TODO
+-    self.conv1d = nn.Conv1d(in_channels=, out_channels=, \
++    self.conv1d = nn.Conv1d(in_channels=input_size, \
++                            out_channels=hidden_size, \
+                             kernel_size=2, stride=1)
+-    self.fc = nn.Linear(, 1)
++    self.fc = nn.Linear(hidden_size, 1)
+ 
+   def forward(self, x):
+     x = x.transpose(1, 2)
+--- ts_practice cell 35
++++ ts_solution cell 35
+@@ -1,9 +1,9 @@
+ class RNNModel(nn.Module):
+   def __init__(self, input_size, hidden_size, num_layers):
+       super(RNNModel, self).__init__()
+-      # TODO
+-      self.rnn = nn.RNN(, , , batch_first=True)
+-      self.fc = nn.Linear(, 1)
++      self.rnn = nn.RNN(input_size, hidden_size, num_layers, batch_first=True)
++      self.fc = nn.Linear(hidden_size, 1)
+ 
+   def forward(self, x):
+-      # TODO
++      out, _ = self.rnn(x)
++      return self.fc(out)
+--- ts_practice cell 44
++++ ts_solution cell 44
+@@ -1,16 +1,22 @@
+ class EncoderRNN(nn.Module):
+   def __init__(self, input_size, hidden_size, num_layers):
+-    # TODO
++    super(EncoderRNN, self).__init__()
++    self.rnn = nn.RNN(input_size, hidden_size, num_layers, batch_first=True)
+ 
+   def forward(self, x):
+-    # TODO
++    _, h = self.rnn(x)
++    return h
+ 
+ class DecoderRNN(nn.Module):
+   def __init__(self, input_size, hidden_size, num_layers):
+-    # TODO
++    super(DecoderRNN, self).__init__()
++    self.rnn = nn.RNN(input_size, hidden_size, num_layers, batch_first=True)
++    self.fc = nn.Linear(hidden_size, input_size)
+ 
+   def forward(self, x, h):
+-    # TODO
++    out, h = self.rnn(x, h)
++    out = self.fc(out)
++    return out, h
+ 
+ class RNNRNN(nn.Module):
+   def __init__(self, input_size, hidden_size, num_layers):
+@@ -32,6 +38,7 @@
+ 
+ model_ = RNNRNN(input_size, hidden_size, num_layers).to(device)
+ print(model_)
++
+ # RNNRNN(
+ #   (encoder): EncoderRNN(
+ #     (rnn): RNN(1, 64, num_layers=2, batch_first=True)

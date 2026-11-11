@@ -1,0 +1,42 @@
+[
+  {
+    "question": 1,
+    "source_cell_1based": 14,
+    "blanks": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "blank_rejected": true
+  },
+  {
+    "question": 2,
+    "source_cell_1based": 14,
+    "blanks": 2,
+    "cases": 2,
+    "answer_pass": true,
+    "blank_rejected": true
+  },
+  {
+    "question": 3,
+    "source_cell_1based": 14,
+    "blanks": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "blank_rejected": true
+  },
+  {
+    "question": 4,
+    "source_cell_1based": 15,
+    "blanks": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "blank_rejected": true
+  },
+  {
+    "question": 5,
+    "source_cell_1based": 15,
+    "blanks": 3,
+    "cases": 2,
+    "answer_pass": true,
+    "blank_rejected": true
+  }
+]

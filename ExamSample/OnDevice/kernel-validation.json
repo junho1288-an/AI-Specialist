@@ -1,0 +1,6 @@
+{
+  "blank_expected_fail": 32,
+  "answer_pass": 32,
+  "fresh_kernels": true,
+  "saved_student_outputs": false
+}

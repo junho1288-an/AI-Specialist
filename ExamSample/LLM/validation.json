@@ -1,0 +1,214 @@
+{
+  "questions": 26,
+  "source_blank_count": 89,
+  "checks": [
+    {
+      "question": 1,
+      "file": "Chapter_2_Exercise_Dataset.ipynb",
+      "cell_1based": 1,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 2,
+      "file": "Chapter_2_Exercise_Dataset.ipynb",
+      "cell_1based": 2,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 3,
+      "file": "Chapter_2_Exercise_Dataset.ipynb",
+      "cell_1based": 3,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 4,
+      "file": "Chapter_2_Exercise_Dataset.ipynb",
+      "cell_1based": 4,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 5,
+      "file": "Chapter_2_Exercise_Dataset.ipynb",
+      "cell_1based": 6,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 6,
+      "file": "Chapter_3_Excercise_Attention.ipynb",
+      "cell_1based": 1,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 7,
+      "file": "Chapter_3_Excercise_Attention.ipynb",
+      "cell_1based": 2,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 8,
+      "file": "Chapter_4_Excercise_GPT.ipynb",
+      "cell_1based": 3,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 9,
+      "file": "Chapter_4_Excercise_GPT.ipynb",
+      "cell_1based": 3,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 10,
+      "file": "Chapter_4_Excercise_GPT.ipynb",
+      "cell_1based": 4,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 11,
+      "file": "Chapter_4_Excercise_GPT.ipynb",
+      "cell_1based": 4,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 12,
+      "file": "Chapter_4_Excercise_GPT.ipynb",
+      "cell_1based": 5,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 13,
+      "file": "Chapter_5_Excercise_Pretraining.ipynb",
+      "cell_1based": 2,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 14,
+      "file": "Chapter_5_Excercise_Pretraining.ipynb",
+      "cell_1based": 3,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 15,
+      "file": "Chapter_5_Excercise_Pretraining.ipynb",
+      "cell_1based": 4,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 16,
+      "file": "Chapter_5_Excercise_Pretraining.ipynb",
+      "cell_1based": 5,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 17,
+      "file": "Chapter_5_Excercise_Pretraining.ipynb",
+      "cell_1based": 5,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 18,
+      "file": "Chapter_5_Excercise_Pretraining.ipynb",
+      "cell_1based": 5,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 19,
+      "file": "Chapter_6_Excercise_Finetuning_Classification.ipynb",
+      "cell_1based": 1,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 20,
+      "file": "Chapter_6_Excercise_Finetuning_Classification.ipynb",
+      "cell_1based": 1,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 21,
+      "file": "Chapter_6_Excercise_Finetuning_Classification.ipynb",
+      "cell_1based": 1,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 22,
+      "file": "Chapter_6_Excercise_Finetuning_Classification.ipynb",
+      "cell_1based": 2,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 23,
+      "file": "Chapter_6_Excercise_Finetuning_Classification_LoRA.ipynb",
+      "cell_1based": 3,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 24,
+      "file": "Chapter_6_Excercise_Finetuning_Classification_LoRA.ipynb",
+      "cell_1based": 3,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 25,
+      "file": "Chapter_6_Excercise_Finetuning_Classification_LoRA.ipynb",
+      "cell_1based": 3,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    },
+    {
+      "question": 26,
+      "file": "Chapter_6_Excercise_Finetuning_Classification_LoRA.ipynb",
+      "cell_1based": 4,
+      "cases": 2,
+      "reference_pass": true,
+      "blank_rejected": true
+    }
+  ]
+}

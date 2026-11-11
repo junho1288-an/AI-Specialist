@@ -1,0 +1,58 @@
+[
+  {
+    "question": 1,
+    "original_blank": true,
+    "source_cell_1based": 24,
+    "reference_pass": true,
+    "blank_rejected": true,
+    "cases": 2
+  },
+  {
+    "question": 2,
+    "original_blank": true,
+    "source_cell_1based": 24,
+    "reference_pass": true,
+    "blank_rejected": true,
+    "cases": 2
+  },
+  {
+    "question": 3,
+    "original_blank": true,
+    "source_cell_1based": 28,
+    "reference_pass": true,
+    "blank_rejected": true,
+    "cases": 2
+  },
+  {
+    "question": 4,
+    "original_blank": true,
+    "source_cell_1based": 30,
+    "reference_pass": true,
+    "blank_rejected": true,
+    "cases": 2
+  },
+  {
+    "question": 5,
+    "original_blank": true,
+    "source_cell_1based": 35,
+    "reference_pass": true,
+    "blank_rejected": true,
+    "cases": 2
+  },
+  {
+    "question": 6,
+    "original_blank": true,
+    "source_cell_1based": 44,
+    "reference_pass": true,
+    "blank_rejected": true,
+    "cases": 2
+  },
+  {
+    "question": 7,
+    "original_blank": true,
+    "source_cell_1based": 44,
+    "reference_pass": true,
+    "blank_rejected": true,
+    "cases": 2
+  }
+]

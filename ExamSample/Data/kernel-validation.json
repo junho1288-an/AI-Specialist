@@ -1,0 +1,40 @@
+{
+  "fresh_answer_pass": 7,
+  "fresh_blank_fail": 7,
+  "isolated_checks": [
+    {
+      "question": 1,
+      "independent_answer_pass": true,
+      "semantic_mutation_rejected": true
+    },
+    {
+      "question": 2,
+      "independent_answer_pass": true,
+      "semantic_mutation_rejected": true
+    },
+    {
+      "question": 3,
+      "independent_answer_pass": true,
+      "semantic_mutation_rejected": true
+    },
+    {
+      "question": 4,
+      "independent_answer_pass": true,
+      "semantic_mutation_rejected": true
+    },
+    {
+      "question": 5,
+      "independent_answer_pass": true,
+      "semantic_mutation_rejected": true
+    },
+    {
+      "question": 6,
+      "independent_answer_pass": true
+    },
+    {
+      "question": 7,
+      "independent_answer_pass": true,
+      "semantic_mutation_rejected": true
+    }
+  ]
+}

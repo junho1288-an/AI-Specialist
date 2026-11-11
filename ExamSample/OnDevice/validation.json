@@ -1,0 +1,258 @@
+[
+  {
+    "question": 1,
+    "source_cell_1based": 28,
+    "region": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 2,
+    "source_cell_1based": 28,
+    "region": 2,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 3,
+    "source_cell_1based": 37,
+    "region": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 4,
+    "source_cell_1based": 59,
+    "region": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 5,
+    "source_cell_1based": 67,
+    "region": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 6,
+    "source_cell_1based": 89,
+    "region": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 7,
+    "source_cell_1based": 89,
+    "region": 2,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 8,
+    "source_cell_1based": 100,
+    "region": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 9,
+    "source_cell_1based": 31,
+    "region": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 10,
+    "source_cell_1based": 31,
+    "region": 2,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 11,
+    "source_cell_1based": 38,
+    "region": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 12,
+    "source_cell_1based": 38,
+    "region": 2,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 13,
+    "source_cell_1based": 54,
+    "region": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 14,
+    "source_cell_1based": 54,
+    "region": 2,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 15,
+    "source_cell_1based": 59,
+    "region": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 16,
+    "source_cell_1based": 71,
+    "region": 1,
+    "cases": 3,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 17,
+    "source_cell_1based": 27,
+    "region": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 18,
+    "source_cell_1based": 40,
+    "region": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 19,
+    "source_cell_1based": 53,
+    "region": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 20,
+    "source_cell_1based": 11,
+    "region": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 21,
+    "source_cell_1based": 22,
+    "region": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 22,
+    "source_cell_1based": 28,
+    "region": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 23,
+    "source_cell_1based": 10,
+    "region": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 24,
+    "source_cell_1based": 16,
+    "region": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 25,
+    "source_cell_1based": 19,
+    "region": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 26,
+    "source_cell_1based": 28,
+    "region": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 27,
+    "source_cell_1based": 28,
+    "region": 2,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 28,
+    "source_cell_1based": 29,
+    "region": 1,
+    "cases": 3,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 29,
+    "source_cell_1based": 40,
+    "region": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 30,
+    "source_cell_1based": 42,
+    "region": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 31,
+    "source_cell_1based": 43,
+    "region": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  },
+  {
+    "question": 32,
+    "source_cell_1based": 51,
+    "region": 1,
+    "cases": 2,
+    "answer_pass": true,
+    "wrong_answer_rejected": true
+  }
+]

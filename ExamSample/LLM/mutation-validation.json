@@ -1,0 +1,114 @@
+[
+  {
+    "question": 1,
+    "independent_reference_pass": true
+  },
+  {
+    "question": 2,
+    "independent_reference_pass": true,
+    "semantic_mutation_rejected": true
+  },
+  {
+    "question": 3,
+    "independent_reference_pass": true
+  },
+  {
+    "question": 4,
+    "independent_reference_pass": true
+  },
+  {
+    "question": 5,
+    "independent_reference_pass": true
+  },
+  {
+    "question": 6,
+    "independent_reference_pass": true,
+    "semantic_mutation_rejected": true
+  },
+  {
+    "question": 7,
+    "independent_reference_pass": true
+  },
+  {
+    "question": 8,
+    "independent_reference_pass": true,
+    "semantic_mutation_rejected": true
+  },
+  {
+    "question": 9,
+    "independent_reference_pass": true
+  },
+  {
+    "question": 10,
+    "independent_reference_pass": true
+  },
+  {
+    "question": 11,
+    "independent_reference_pass": true
+  },
+  {
+    "question": 12,
+    "independent_reference_pass": true,
+    "semantic_mutation_rejected": true
+  },
+  {
+    "question": 13,
+    "independent_reference_pass": true
+  },
+  {
+    "question": 14,
+    "independent_reference_pass": true,
+    "semantic_mutation_rejected": true
+  },
+  {
+    "question": 15,
+    "independent_reference_pass": true
+  },
+  {
+    "question": 16,
+    "independent_reference_pass": true
+  },
+  {
+    "question": 17,
+    "independent_reference_pass": true
+  },
+  {
+    "question": 18,
+    "independent_reference_pass": true
+  },
+  {
+    "question": 19,
+    "independent_reference_pass": true
+  },
+  {
+    "question": 20,
+    "independent_reference_pass": true
+  },
+  {
+    "question": 21,
+    "independent_reference_pass": true,
+    "semantic_mutation_rejected": true
+  },
+  {
+    "question": 22,
+    "independent_reference_pass": true
+  },
+  {
+    "question": 23,
+    "independent_reference_pass": true,
+    "semantic_mutation_rejected": true
+  },
+  {
+    "question": 24,
+    "independent_reference_pass": true,
+    "semantic_mutation_rejected": true
+  },
+  {
+    "question": 25,
+    "independent_reference_pass": true
+  },
+  {
+    "question": 26,
+    "independent_reference_pass": true
+  }
+]
