@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inverted Index와 Term-Document Matrix</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* layout: document 3개 → (inverted index | matrix) 나란히 → 복원 실험 (inverted index | matrix 열) 나란히. document마다 고유 색. */
+:root{
+  --bg:#f2f4f7; --surface:#ffffff; --ink:#17202a; --muted:#5a6775; --line:#d3dae2;
+  --mark:#ffe070; --accent:#2747c7;
+  --d1:#b4540a; --d2:#0b7468; --d3:#9a1fa8; --d4:#c0283a;
+  --sans:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#11151a; --surface:#1a2027; --ink:#e5eaf0; --muted:#97a3b0; --line:#313a45;
+    --mark:#7d6500; --accent:#92a8ff;
+    --d1:#f2a23c; --d2:#3fd0bd; --d3:#e184ee; --d4:#ff8490;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#11151a; --surface:#1a2027; --ink:#e5eaf0; --muted:#97a3b0; --line:#313a45;
+  --mark:#7d6500; --accent:#92a8ff;
+  --d1:#f2a23c; --d2:#3fd0bd; --d3:#e184ee; --d4:#ff8490;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.65}
+main{max-width:1120px;margin:0 auto;padding:32px 20px 56px;display:flex;flex-direction:column;gap:28px}
+h1{font-size:1.75rem;line-height:1.25;margin:0 0 8px;font-weight:700;text-wrap:balance}
+h2{font-size:1.15rem;margin:0;font-weight:700;text-wrap:balance}
+h3{font-size:.95rem;margin:0;font-weight:700}
+p{margin:0}
+.lede{color:var(--muted);max-width:65ch}
+code,.mono{font-family:var(--mono)}
+.d0{--dc:var(--d1)} .d1{--dc:var(--d2)} .d2{--dc:var(--d3)} .d3{--dc:var(--d4)}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.head{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between}
+.sub{color:var(--muted);font-size:.9rem;max-width:65ch}
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,430px),1fr));gap:20px;align-items:start}
+.scroll{overflow-x:auto;padding-bottom:4px}
+
+button,input{font:inherit;color:inherit}
+.btn{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:5px 12px;font-size:.88rem;cursor:pointer}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.btn.primary:hover{color:var(--surface);filter:brightness(1.1)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{background:var(--surface);border:0;padding:5px 12px;font-size:.88rem;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--surface)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+/* document 카드 */
+.docs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px}
+.doc{border:1px solid var(--line);border-left:4px solid var(--dc);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.doc label{display:flex;gap:8px;align-items:center}
+.tag{font-family:var(--mono);font-weight:600;font-size:.85rem;color:var(--dc);border:1px solid var(--dc);border-radius:4px;padding:0 6px;line-height:1.5;white-space:nowrap}
+.doc input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 9px;font-family:var(--mono);font-size:.9rem}
+.toks{display:flex;flex-wrap:wrap;gap:6px}
+.tok{display:flex;flex-direction:column;align-items:center;border:1px solid var(--line);border-radius:5px;padding:2px 7px 1px;font-family:var(--mono);font-size:.9rem;cursor:default;min-width:30px}
+.tok small{font-size:.7rem;color:var(--dc);font-weight:600;font-variant-numeric:tabular-nums}
+.tok.empty{border-style:dashed;color:var(--muted)}
+.none{color:var(--muted);font-size:.88rem}
+
+/* 강조 */
+.h{transition:background-color .12s}
+.h.on{background:var(--mark)}
+
+/* inverted index */
+.legend{font-family:var(--mono);font-size:.85rem;color:var(--muted)}
+.index{display:flex;flex-direction:column;gap:6px;min-width:max-content}
+.irow{display:flex;align-items:center;gap:8px}
+.dict{display:flex;justify-content:space-between;gap:10px;align-items:baseline;width:132px;flex:none;border:1px solid var(--ink);border-radius:5px;padding:3px 9px;font-family:var(--mono);font-size:.9rem;cursor:default}
+.dict .df{font-size:.72rem;color:var(--muted);white-space:nowrap}
+.arrow{color:var(--muted);font-family:var(--mono)}
+.plist{display:flex;gap:0;align-items:center}
+.posting{display:flex;gap:8px;align-items:baseline;border:1px solid var(--dc);border-radius:5px;padding:3px 8px;font-family:var(--mono);font-size:.85rem;white-space:nowrap;cursor:default;font-variant-numeric:tabular-nums}
+.posting .pid{color:var(--dc);font-weight:600}
+.posting .pf b{font-weight:600}
+.posting .po{color:var(--muted)}
+.link{width:14px;height:1px;background:var(--muted);flex:none}
+
+/* matrix */
+table.tdm{border-collapse:separate;border-spacing:3px;font-family:var(--mono);font-size:.9rem;font-variant-numeric:tabular-nums}
+.tdm th,.tdm td{padding:3px 10px;border-radius:5px;text-align:center;cursor:default}
+.tdm thead th{color:var(--dc);font-weight:600}
+.tdm thead th.corner{color:var(--muted);font-weight:400;font-size:.75rem;text-align:left}
+.tdm tbody th{text-align:left;font-weight:500;border:1px solid var(--ink)}
+.tdm td{border:1px solid var(--line);min-width:52px}
+.tdm td.nz{border-color:var(--dc);font-weight:600}
+.tdm td.z{color:var(--muted);opacity:.55}
+.map{margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:.9rem}
+.map li{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:baseline}
+.map b{font-family:var(--mono);font-weight:600;white-space:nowrap}
+.stat{font-size:.9rem;border-top:1px solid var(--line);padding-top:12px}
+
+/* 복원 */
+.steps{display:flex;flex-direction:column;gap:3px;font-family:var(--mono);font-size:.85rem;font-variant-numeric:tabular-nums}
+.step{display:flex;gap:10px;padding:1px 8px;border-radius:4px;border-left:3px solid transparent;color:var(--muted);white-space:nowrap}
+.step.done{color:var(--ink)}
+.step.cur{border-left-color:var(--accent)}
+.step .st{min-width:9ch;font-weight:600}
+.verdict{font-size:.92rem;border-left:4px solid var(--line);padding:6px 12px;border-radius:0 6px 6px 0;background:var(--bg)}
+.verdict.ok{border-left-color:var(--d2)}
+.verdict.no{border-left-color:var(--d1)}
+.verdict .mono{font-size:.9rem}
+.bag{display:flex;flex-wrap:wrap;gap:6px}
+.bagit{border:1px solid var(--dc);border-radius:999px;padding:1px 10px;font-family:var(--mono);font-size:.88rem;cursor:default}
+.bagit b{color:var(--dc);font-weight:600}
+.note{color:var(--muted);font-size:.88rem;max-width:75ch}
+/* TF-IDF 순위 */
+.formula{font-family:var(--mono);font-size:.88rem;background:var(--bg);border-radius:6px;padding:10px 14px;display:grid;gap:2px;overflow-x:auto;white-space:nowrap}
+.qbar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.qbar label{display:flex;gap:8px;align-items:center;flex:1;min-width:min(100%,260px);font-size:.9rem;font-weight:500}
+.qbar input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 9px;font-family:var(--mono);font-size:.9rem}
+.tdm td.idf{border:0;color:var(--muted)}
+.tdm thead th.qh{color:var(--accent)}
+.tdm td.qc.nz{border-color:var(--accent);color:var(--accent)}
+.tdm tr.qrow th{border-color:var(--accent);color:var(--accent);font-weight:600}
+.tdm tfoot th{text-align:left;font-weight:500;color:var(--muted)}
+.tdm tfoot td{border:0}
+.tdm tfoot tr.score th,.tdm tfoot tr.score td{color:var(--ink);font-weight:600}
+.calc{font-family:var(--mono);font-size:.82rem;display:grid;gap:3px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.qlist{display:flex;flex-direction:column;gap:8px;min-width:max-content}
+.qline{display:flex;align-items:center;gap:8px}
+.qline .qmeta{font-family:var(--mono);font-size:.78rem;color:var(--muted);width:19ch;flex:none;white-space:nowrap;font-variant-numeric:tabular-nums}
+.qline.pending .dict{border-style:dashed;color:var(--muted)}
+.qline.now .dict{background:var(--mark)}
+.posting.pend{opacity:.45}
+.posting.skip{opacity:.45;border-style:dashed}
+.posting.done{background:color-mix(in srgb,var(--dc) 16%,var(--surface))}
+.posting.cur{background:var(--mark);outline:2px solid var(--accent);outline-offset:1px}
+.msg{border-left:4px solid var(--accent);background:var(--bg);border-radius:0 6px 6px 0;padding:8px 12px;font-size:.92rem;min-height:3.4em}
+.msg .mono{font-size:.88rem}
+.simctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.simctl .count{font-family:var(--mono);font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums}
+table.acc{border-collapse:collapse;width:100%;font-size:.9rem;font-variant-numeric:tabular-nums}
+.acc th{font-weight:500;color:var(--muted);font-size:.8rem;text-align:left;padding:2px 8px 4px 0}
+.acc td{padding:4px 8px 4px 0;font-family:var(--mono);border-top:1px solid var(--line);white-space:nowrap}
+.acc td.barc{width:45%;padding-right:0}
+.acc tr.cur td{background:var(--mark)}
+.acc .nil{color:var(--muted)}
+.bar{height:10px;background:var(--bg);border-radius:5px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--dc);border-radius:5px}
+ol.rank{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+.rank li{display:grid;grid-template-columns:2.2em auto 5.5ch 1fr;gap:10px;align-items:baseline;border:1px solid var(--line);border-left:4px solid var(--dc);border-radius:6px;padding:6px 10px;font-family:var(--mono);font-size:.9rem;font-variant-numeric:tabular-nums}
+.rank .rk{font-weight:600}
+.rank .tx{color:var(--muted);overflow-wrap:anywhere}
+.rank .tie{font-family:var(--sans);font-size:.75rem;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:0 6px;margin-left:6px}
+@media (prefers-reduced-motion: reduce){.h{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Inverted Index와 Term-Document Matrix</h1>
+    <p class="lede">같은 document collection을 두 가지로 표현합니다. inverted index의 posting은 freq와 offset list를 담고, matrix의 cell은 freq만 담습니다. 아무 항목에나 마우스를 올리거나 눌러 보면 세 곳에서 대응하는 부분이 함께 표시됩니다.</p>
+  </header>
+
+  <section class="panel" aria-labelledby="h-docs">
+    <div class="head">
+      <h2 id="h-docs">Document Collection</h2>
+      <div class="tools">
+        <span class="sub">offset 단위</span>
+        <div class="seg" role="group" aria-label="offset 단위">
+          <button type="button" id="unit-word" aria-pressed="true">word position</button>
+          <button type="button" id="unit-char" aria-pressed="false">character offset</button>
+        </div>
+        <button type="button" class="btn" id="reset">예제로 되돌리기</button>
+      </div>
+    </div>
+    <p class="sub">문장을 직접 고쳐 보세요. 각 token 아래 숫자가 offset입니다. 예제의 d1과 d2는 같은 term을 다른 순서로 씁니다.</p>
+    <div class="docs" id="docs"></div>
+  </section>
+
+  <div class="pair">
+    <section class="panel" aria-labelledby="h-idx">
+      <h2 id="h-idx">Inverted Index</h2>
+      <p class="legend">term, df → ⟨docID, freq, [offset, …]⟩ → …</p>
+      <div class="scroll"><div class="index" id="index"></div></div>
+      <p class="sub">dictionary의 각 term이 posting list를 가리킵니다. 그 term이 나오는 document마다 posting이 하나씩 있고, freq는 offset list의 길이와 같습니다.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="h-tdm">
+      <h2 id="h-tdm">Term-Document Matrix</h2>
+      <div class="scroll"><table class="tdm" id="tdm"></table></div>
+      <ul class="map">
+        <li><b>row (term)</b><span>그 term의 posting list. 0이 아닌 cell마다 posting이 하나 있습니다.</span></li>
+        <li><b>cell 값</b><span>posting의 freq. offset list는 들어갈 자리가 없습니다.</span></li>
+        <li><b>column (document)</b><span>그 document의 bag of terms. 어떤 term이 몇 번 나왔는지만 남습니다.</span></li>
+      </ul>
+      <p class="stat" id="stat"></p>
+    </section>
+  </div>
+
+  <section class="panel" aria-labelledby="h-rec">
+    <div class="head">
+      <h2 id="h-rec">Document를 되살릴 수 있는가</h2>
+      <div class="seg" role="group" aria-label="복원할 document" id="tabs"></div>
+    </div>
+    <div class="pair">
+      <div class="panel" id="rec-idx">
+        <div class="head">
+          <h3>Inverted index에서: 복원됩니다</h3>
+          <div class="tools">
+            <button type="button" class="btn primary" id="play">처음부터 재생</button>
+            <button type="button" class="btn" id="stepbtn">한 단계</button>
+          </div>
+        </div>
+        <p class="sub">모든 posting list에서 이 document의 posting만 모아, 각 term을 offset이 가리키는 slot에 놓습니다.</p>
+        <div class="scroll"><div class="steps" id="steps"></div></div>
+        <div class="toks" id="slots"></div>
+        <p class="verdict ok" id="v-idx"></p>
+      </div>
+      <div class="panel" id="rec-tdm">
+        <div class="head">
+          <h3>Matrix의 column에서: 순서를 알 수 없습니다</h3>
+          <button type="button" class="btn" id="shuffle">다시 섞기</button>
+        </div>
+        <p class="sub">column에서 얻는 것은 term과 frequency가 전부입니다.</p>
+        <div class="bag" id="bag"></div>
+        <div class="toks" id="arr"></div>
+        <p class="verdict no" id="v-tdm"></p>
+      </div>
+    </div>
+    <p class="note">inverted index에서 복원되는 것은 tokenization을 거친 document입니다. case, punctuation, 그리고 stopword 제거나 stemming으로 버린 정보는 돌아오지 않습니다.</p>
+  </section>
+  <section class="panel" aria-labelledby="h-rank">
+    <h2 id="h-rank">TF-IDF Ranking</h2>
+    <p class="sub">term-document matrix는 formal model입니다. document와 query를 같은 term 공간의 vector로 놓고, score를 두 vector 연산으로 정의합니다. inverted index는 그 score를 실제로 계산하는 data structure이고, posting만 읽어서 같은 값을 얻습니다.</p>
+    <div class="formula">
+      <span>w(t,d) = tf(t,d) × idf(t)</span>
+      <span>idf(t) = log10( N / df(t) )</span>
+      <span id="f-score"></span>
+    </div>
+    <div class="qbar">
+      <label for="query-input">query <input id="query-input" type="text" value="dog chased cat" spellcheck="false" autocomplete="off"></label>
+      <div class="tools">
+        <span class="sub">score</span>
+        <div class="seg" role="group" aria-label="score normalization">
+          <button type="button" id="norm-on" aria-pressed="true">cosine (÷|d|)</button>
+          <button type="button" id="norm-off" aria-pressed="false">dot product만</button>
+        </div>
+      </div>
+    </div>
+    <div class="pair">
+      <div class="panel">
+        <h3>Matrix: score의 정의</h3>
+        <p class="sub">cell에 tf 대신 weight w를 넣습니다. column 하나가 document vector, 오른쪽 q column이 query vector이고, score는 document column과 q column의 dot product입니다.</p>
+        <div class="scroll"><table class="tdm" id="wtdm"></table></div>
+        <div class="scroll"><div class="calc" id="calc"></div></div>
+        <p class="stat" id="cost"></p>
+      </div>
+      <div class="panel">
+        <div class="head">
+          <h3>Inverted index: term-at-a-time 계산</h3>
+          <div class="simctl">
+            <button type="button" class="btn" id="sim-first">처음</button>
+            <button type="button" class="btn" id="sim-prev">이전</button>
+            <button type="button" class="btn primary" id="sim-next">다음</button>
+            <button type="button" class="btn" id="sim-play">재생</button>
+            <button type="button" class="btn" id="sim-end">끝</button>
+            <span class="count" id="sim-count"></span>
+          </div>
+        </div>
+        <p class="sub">index 구조는 그대로입니다. dictionary의 df에서 idf를, posting의 freq에서 tf를 얻어 query 시점에 weight를 계산합니다. 추가로 두는 것은 document length |d| table 하나입니다. offset list는 ranking 계산에 쓰지 않습니다.</p>
+        <div class="scroll"><div class="qlist" id="qlist"></div></div>
+        <p class="msg" id="msg"></p>
+        <table class="acc" id="acc"></table>
+        <h3>Ranked list</h3>
+        <div id="rank"></div>
+      </div>
+    </div>
+    <p class="note">weight w를 posting에 미리 저장하지 않는 이유는 document가 하나 추가될 때마다 N과 df가 바뀌어 idf가 전부 달라지기 때문입니다. tf와 df만 저장하면 index를 고치지 않아도 됩니다. query vector의 길이 |q|는 모든 document에 똑같이 곱해지므로 ranking에 영향이 없어 생략했습니다.</p>
+  </section>
+</main>
+
+<script>
+const DEFAULT = ["the dog bit the man", "the man bit the dog", "the dog chased the cat", "the cat sat on the mat"];
+let docs = DEFAULT.slice(), unit = "word", sel = 0, step = Infinity, arrOrder = null, timer = null;
+let toks = [], terms = [], index = new Map();
+let hl = null, pinned = null;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const off = o => unit === "word" ? o.word : o.char;
+
+function tokenize(text){
+  let i = 0;
+  return Array.from(text.matchAll(/[\p{L}\p{N}]+/gu), m => ({term: m[0].toLowerCase(), word: ++i, char: m.index}));
+}
+function build(){
+  toks = docs.map(tokenize);
+  index = new Map();
+  toks.forEach((ts, d) => ts.forEach(t => {
+    if(!index.has(t.term)) index.set(t.term, []);
+    const pl = index.get(t.term);
+    let p = pl[pl.length - 1];
+    if(!p || p.doc !== d){ p = {doc: d, offs: []}; pl.push(p); }
+    p.offs.push(t);
+  }));
+  terms = Array.from(index.keys()).sort((a, b) => a.localeCompare(b));
+}
+const tf = (term, d) => { const p = (index.get(term) || []).find(p => p.doc === d); return p ? p.offs.length : 0; };
+
+function initDocs(){
+  $("#docs").innerHTML = docs.map((t, d) => `
+    <div class="doc d${d}">
+      <label for="doc-input-${d}"><span class="tag h" data-doc="${d}">d${d+1}</span>
+        <input id="doc-input-${d}" type="text" value="${esc(t)}" spellcheck="false" autocomplete="off"></label>
+      <div class="toks" id="toks-${d}"></div>
+    </div>`).join("");
+  docs.forEach((_, d) => $("#doc-input-" + d).addEventListener("input", e => {
+    docs[d] = e.target.value; stop(); step = Infinity; arrOrder = null; render();
+  }));
+  $("#tabs").innerHTML = docs.map((_, d) => `<button type="button" data-sel="${d}">d${d+1}</button>`).join("");
+  $("#tabs").addEventListener("click", e => {
+    const b = e.target.closest("button"); if(!b) return;
+    sel = +b.dataset.sel; stop(); step = Infinity; arrOrder = null; renderRecon(); applyHL();
+  });
+}
+function renderDocs(){
+  toks.forEach((ts, d) => {
+    $("#toks-" + d).innerHTML = ts.length
+      ? ts.map(t => `<span class="tok h" data-term="${esc(t.term)}" data-doc="${d}">${esc(t.term)}<small>${off(t)}</small></span>`).join("")
+      : `<span class="none">token이 없습니다</span>`;
+  });
+}
+function renderIndex(){
+  $("#index").innerHTML = terms.length ? terms.map(term => {
+    const pl = index.get(term);
+    return `<div class="irow">
+      <div class="dict h" data-term="${esc(term)}"><span>${esc(term)}</span><span class="df">df ${pl.length}</span></div>
+      <span class="arrow">→</span>
+      <div class="plist">${pl.map(p => `<div class="posting h d${p.doc}" data-term="${esc(term)}" data-doc="${p.doc}">
+        <span class="pid">d${p.doc+1}</span><span class="pf">freq <b>${p.offs.length}</b></span><span class="po">[${p.offs.map(off).join(", ")}]</span></div>`).join('<span class="link"></span>')}</div>
+    </div>`;
+  }).join("") : `<span class="none">document를 입력하면 index가 만들어집니다</span>`;
+}
+function renderMatrix(){
+  let nnz = 0;
+  const body = terms.map(term => `<tr><th class="h" data-term="${esc(term)}">${esc(term)}</th>${docs.map((_, d) => {
+    const f = tf(term, d); if(f) nnz++;
+    return `<td class="h d${d} ${f ? "nz" : "z"}" data-term="${esc(term)}" data-doc="${d}">${f}</td>`;
+  }).join("")}</tr>`).join("");
+  $("#tdm").innerHTML = `<thead><tr><th class="corner">term \\ doc</th>${docs.map((_, d) => `<th class="h d${d}" data-doc="${d}">d${d+1}</th>`).join("")}</tr></thead><tbody>${body}</tbody>`;
+  const cells = terms.length * docs.length;
+  $("#stat").innerHTML = `matrix의 cell <b>${cells}</b>개 가운데 0이 아닌 cell은 <b>${nnz}</b>개이고, inverted index의 posting도 <b>${nnz}</b>개입니다. inverted index는 이 matrix에서 0을 저장하지 않고 row 단위로 묶은 다음, 각 cell에 offset list를 붙인 구조입니다.`;
+}
+
+const fact = n => { let r = 1n; for(let i = 2n; i <= BigInt(n); i++) r *= i; return r; };
+function fmtBig(b){ const s = b.toString(); return s.length > 15 ? `약 10^${s.length - 1}` : Number(s).toLocaleString("ko-KR"); }
+
+function renderRecon(){
+  document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.sel === sel)));
+  const ts = toks[sel], mine = terms.filter(t => tf(t, sel) > 0);
+  const total = mine.length, done = Math.min(step, total);
+  const placed = new Set(mine.slice(0, done));
+  const dcls = "d" + sel;
+
+  $("#steps").innerHTML = mine.map((term, i) => {
+    const p = index.get(term).find(p => p.doc === sel);
+    const o = p.offs.map(off);
+    return `<div class="step ${i < done ? "done" : ""} ${i === done - 1 && done < total ? "cur" : ""}">
+      <span class="st">${esc(term)}</span><span>⟨d${sel+1}, ${o.length}, [${o.join(", ")}]⟩</span><span>${i < done ? `→ ${o.join(", ")}번 slot` : ""}</span></div>`;
+  }).join("") || `<span class="none">이 document의 posting이 없습니다</span>`;
+
+  $("#slots").innerHTML = ts.map(t => placed.has(t.term)
+    ? `<span class="tok h ${dcls}" data-term="${esc(t.term)}" data-doc="${sel}">${esc(t.term)}<small>${off(t)}</small></span>`
+    : `<span class="tok empty ${dcls}">?<small>${off(t)}</small></span>`).join("");
+
+  const v = $("#v-idx");
+  if(!ts.length){ v.textContent = "document가 비어 있습니다."; }
+  else if(done < total){ v.innerHTML = `term ${total}개 중 ${done}개를 놓았습니다. freq의 합 ${ts.length}이 document length이므로 slot 수는 처음부터 알 수 있습니다.`; }
+  else { v.innerHTML = `offset 순서로 읽으면 <span class="mono">${esc(ts.map(t => t.term).join(" "))}</span>. tokenize한 원문과 같습니다.`; }
+
+  // matrix의 열
+  $("#bag").innerHTML = mine.map(term => `<span class="bagit h ${dcls}" data-term="${esc(term)}" data-doc="${sel}">${esc(term)} <b>×${tf(term, sel)}</b></span>`).join("")
+    || `<span class="none">column이 모두 0입니다</span>`;
+  const sorted = ts.map(t => t.term).sort((a, b) => a.localeCompare(b));
+  const arr = arrOrder || sorted;
+  $("#arr").innerHTML = arr.map((term, i) => `<span class="tok h ${dcls}" data-term="${esc(term)}" data-doc="${sel}">${esc(term)}<small>?</small></span>`).join("");
+
+  const tfs = mine.map(t => tf(t, sel));
+  const count = tfs.reduce((acc, f) => acc / fact(f), fact(ts.length));
+  const den = tfs.filter(f => f > 1).map(f => f + "!").join("·");
+  const formula = ts.length ? `${ts.length}!${den ? " / " + (den.includes("·") ? "(" + den + ")" : den) : ""} = ${fmtBig(count)}` : "";
+  const twins = docs.map((_, d) => d).filter(d => d !== sel && toks[d].length === ts.length && terms.every(t => tf(t, d) === tf(t, sel)));
+  const same = arr.join(" ") === ts.map(t => t.term).join(" ");
+  let msg = ts.length
+    ? `${arrOrder ? "임의로 늘어놓은 결과" : "row 순서대로 늘어놓은 결과"}입니다${same ? " (우연히 원문과 같습니다)" : ""}. 이 bag과 맞는 ordering은 <span class="mono">${formula}</span>가지이고, matrix는 그중 어느 것이 원문인지 말해 주지 않습니다.`
+    : "document가 비어 있습니다.";
+  if(twins.length && ts.length) msg += ` <b>${twins.map(d => "d" + (d+1)).join(", ")}의 column과 완전히 같으므로</b> matrix에서는 서로 구분되지 않습니다.`;
+  $("#v-tdm").innerHTML = msg;
+}
+
+function render(){ build(); renderDocs(); renderIndex(); renderMatrix(); renderRecon(); simStop(); simStep = Infinity; buildSim(); renderSim(); applyHL(); }
+
+function stop(){ if(timer){ clearInterval(timer); timer = null; } }
+function totalSteps(){ return terms.filter(t => tf(t, sel) > 0).length; }
+$("#play").addEventListener("click", () => {
+  stop();
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches){ step = Infinity; renderRecon(); applyHL(); return; }
+  step = 0; renderRecon(); applyHL();
+  timer = setInterval(() => {
+    step++; if(step >= totalSteps()){ step = Infinity; stop(); }
+    renderRecon(); applyHL();
+  }, 750);
+});
+$("#stepbtn").addEventListener("click", () => {
+  stop();
+  const total = totalSteps();
+  step = step >= total ? 0 : step + 1;
+  if(step >= total) step = Infinity;
+  renderRecon(); applyHL();
+});
+$("#shuffle").addEventListener("click", () => {
+  const a = toks[sel].map(t => t.term);
+  for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  arrOrder = a; renderRecon(); applyHL();
+});
+function setUnit(u){
+  unit = u;
+  $("#unit-word").setAttribute("aria-pressed", String(u === "word"));
+  $("#unit-char").setAttribute("aria-pressed", String(u === "char"));
+  renderDocs(); renderIndex(); renderRecon(); applyHL();
+}
+$("#unit-word").addEventListener("click", () => setUnit("word"));
+$("#unit-char").addEventListener("click", () => setUnit("char"));
+$("#reset").addEventListener("click", () => {
+  docs = DEFAULT.slice(); docs.forEach((t, d) => $("#doc-input-" + d).value = t);
+  stop(); step = Infinity; arrOrder = null; pinned = null; render();
+});
+
+// 연동 강조: 요소가 가진 term/doc 중 지정된 것이 모두 일치하면 표시
+function applyHL(){
+  const cur = hl || pinned;
+  document.querySelectorAll(".h").forEach(el => {
+    let on = false;
+    if(cur){
+      const t = el.dataset.term, d = el.dataset.doc; let share = false, ok = true;
+      if(cur.term !== undefined && t !== undefined){ share = true; if(t !== cur.term) ok = false; }
+      if(cur.doc !== undefined && d !== undefined){ share = true; if(d !== cur.doc) ok = false; }
+      on = share && ok;
+    }
+    el.classList.toggle("on", on);
+  });
+}
+const keyOf = el => ({term: el.dataset.term, doc: el.dataset.doc});
+document.addEventListener("mouseover", e => { const el = e.target.closest(".h"); hl = el ? keyOf(el) : null; applyHL(); });
+document.addEventListener("click", e => {
+  const el = e.target.closest(".h"); if(!el) return;
+  const k = keyOf(el);
+  pinned = (pinned && pinned.term === k.term && pinned.doc === k.doc) ? null : k;
+  applyHL();
+});
+
+// ── TF-IDF 순위 시뮬레이션 ──
+let query = "dog chased cat", useNorm = true, simStep = Infinity, simTimer = null, sim = null;
+const f3 = x => x.toFixed(3), f2 = x => x.toFixed(2);
+
+function buildSim(){
+  const N = toks.filter(t => t.length).length;
+  const idf = term => { const df = (index.get(term) || []).length; return df && N ? Math.log10(N / df) : 0; };
+  const norms = docs.map((_, d) => Math.sqrt(terms.reduce((s, t) => s + (tf(t, d) * idf(t)) ** 2, 0)));
+  const qtf = new Map(); tokenize(query).forEach(t => qtf.set(t.term, (qtf.get(t.term) || 0) + 1));
+  const steps = [], acc = {}, qrows = []; let nPost = 0;
+  qtf.forEach((f, term) => {
+    const pl = index.get(term) || [], df = pl.length, i = idf(term), wq = f * i;
+    const row = {term, f, df, idf: i, wq, lookup: steps.length, posts: []};
+    steps.push({type: "lookup", term, f, df, idf: i, wq, acc: {...acc}});
+    pl.forEach(p => {
+      const t = p.offs.length;
+      if(i > 0){
+        const prev = acc[p.doc] || 0, add = wq * t * i;
+        acc[p.doc] = prev + add; nPost++;
+        row.posts.push({doc: p.doc, tf: t, at: steps.length});
+        steps.push({type: "post", term, doc: p.doc, tf: t, idf: i, wq, prev, acc: {...acc}});
+      } else row.posts.push({doc: p.doc, tf: t, at: -1});
+    });
+    qrows.push(row);
+  });
+  if(useNorm && Object.keys(acc).length){
+    Object.keys(acc).forEach(d => acc[d] = norms[d] ? acc[d] / norms[d] : 0);
+    steps.push({type: "norm", acc: {...acc}});
+  }
+  steps.push({type: "sort", acc: {...acc}});
+  const ranked = Object.entries(acc).map(([d, s]) => ({doc: +d, s})).sort((a, b) => b.s - a.s || a.doc - b.doc);
+  sim = {N, idf, norms, qrows, steps, ranked, nPost, final: {...acc}};
+}
+
+function renderSim(){
+  const {N, idf, norms, qrows, steps, ranked, nPost, final} = sim;
+  $("#f-score").textContent = useNorm ? "score(q,d) = Σ w(t,q) · w(t,d) / |d|      (sum over query terms t)" : "score(q,d) = Σ w(t,q) · w(t,d)      (sum over query terms t)";
+
+  // matrix 쪽: 정의 그대로
+  const qmap = new Map(qrows.map(r => [r.term, r]));
+  $("#wtdm").innerHTML = `<thead><tr><th class="corner">term</th><th class="corner">idf</th>${docs.map((_, d) => `<th class="h d${d}" data-doc="${d}">d${d+1}</th>`).join("")}<th class="qh">q</th></tr></thead><tbody>${
+    terms.map(term => { const i = idf(term), qr = qmap.get(term), wq = qr ? qr.wq : 0;
+      return `<tr class="${qr ? "qrow" : ""}"><th class="h" data-term="${esc(term)}">${esc(term)}</th><td class="idf">${f2(i)}</td>${docs.map((_, d) => { const w = tf(term, d) * i;
+        return `<td class="h d${d} ${w ? "nz" : "z"}" data-term="${esc(term)}" data-doc="${d}">${w ? f2(w) : 0}</td>`; }).join("")}<td class="qc ${wq ? "nz" : "z"}">${wq ? f2(wq) : 0}</td></tr>`; }).join("")
+    }</tbody><tfoot>${useNorm ? `<tr><th>|d|</th><td></td>${norms.map(n => `<td>${f2(n)}</td>`).join("")}<td></td></tr>` : ""}
+    <tr class="score"><th>score</th><td></td>${docs.map((_, d) => `<td>${f3(final[d] || 0)}</td>`).join("")}<td></td></tr></tfoot>`;
+  $("#calc").innerHTML = ranked.map(r => {
+    const parts = qrows.filter(q => q.wq > 0 && tf(q.term, r.doc) > 0).map(q => `${f3(q.wq)}·${f3(tf(q.term, r.doc) * q.idf)}`);
+    const sum = parts.length > 1 && useNorm ? `(${parts.join(" + ")})` : parts.join(" + ");
+    return `<span>score(q, d${r.doc+1}) = ${sum}${useNorm ? ` / ${f3(norms[r.doc])}` : ""} = ${f3(r.s)}</span>`;
+  }).join("");
+  const rowsUsed = qrows.filter(r => r.df).length, missing = qrows.filter(r => !r.df).map(r => r.term);
+  $("#cost").innerHTML = `matrix에서는 query term의 row <b>${rowsUsed}</b>개 × document <b>${docs.length}</b>개 = cell <b>${rowsUsed * docs.length}</b>개를 0까지 포함해 봅니다. inverted index는 posting <b>${nPost}</b>개만 읽습니다.${missing.length ? ` <span class="mono">${esc(missing.join(", "))}</span>은 vocabulary에 없어 row가 없습니다.` : ""}`;
+
+  // inverted index 쪽: 단계별
+  const n = steps.length, k = Math.min(simStep, n), cur = k ? steps[k-1] : null, acc = cur ? cur.acc : {};
+  $("#sim-count").textContent = `${k} / ${n} 단계`;
+  $("#qlist").innerHTML = qrows.length ? qrows.map(r => {
+    const looked = r.lookup < k, now = cur && cur.term === r.term && cur.type !== "sort" && cur.type !== "norm";
+    const meta = !looked ? "lookup 전" : !r.df ? "dictionary에 없음" : `idf ${f3(r.idf)} · w(t,q) ${f3(r.wq)}`;
+    const posts = r.posts.map(p => { const st = p.at < 0 ? "skip" : p.at < k - 1 ? "done" : p.at === k - 1 ? "cur" : "pend";
+      return `<div class="posting d${p.doc} ${st}"><span class="pid">d${p.doc+1}</span><span class="pf">tf <b>${p.tf}</b></span></div>`; }).join('<span class="link"></span>');
+    return `<div class="qline ${looked ? "" : "pending"} ${now ? "now" : ""}"><div class="dict"><span>${esc(r.term)}</span><span class="df">df ${looked ? r.df : "?"}</span></div><span class="qmeta">${meta}</span>${r.posts.length ? `<span class="arrow">→</span><div class="plist">${posts}</div>` : ""}</div>`;
+  }).join("") : `<span class="none">query를 입력하세요</span>`;
+
+  let m;
+  if(!cur) m = qrows.length ? `query를 tokenize했습니다: <span class="mono">[${esc(qrows.map(r => r.term).join(", "))}]</span>. 다음 단계에서 첫 term을 dictionary에서 찾습니다.` : "query가 비어 있습니다.";
+  else if(cur.type === "lookup"){
+    if(!cur.df) m = `<span class="mono">${esc(cur.term)}</span>은 dictionary에 없습니다. 건너뜁니다.`;
+    else if(cur.idf === 0) m = `<span class="mono">${esc(cur.term)}</span>: df = N = ${N}이므로 idf = 0입니다. score에 기여하지 않으므로 posting list를 읽지 않습니다.`;
+    else m = `dictionary에서 <span class="mono">${esc(cur.term)}</span> lookup: df = ${cur.df}이므로 <span class="mono">idf = log10(${N}/${cur.df}) = ${f3(cur.idf)}</span>, query weight <span class="mono">w(t,q) = ${cur.f} × ${f3(cur.idf)} = ${f3(cur.wq)}</span>.`;
+  }
+  else if(cur.type === "post") m = `<span class="mono">${esc(cur.term)}</span>의 posting ⟨d${cur.doc+1}, tf ${cur.tf}⟩: <span class="mono">acc[d${cur.doc+1}] = ${f3(cur.prev)} + ${f3(cur.wq)} × (${cur.tf} × ${f3(cur.idf)}) = ${f3(cur.acc[cur.doc])}</span>${cur.prev === 0 && !(k > 1 && steps.slice(0, k-1).some(s => s.type === "post" && s.doc === cur.doc)) ? ". 이 document의 accumulator를 새로 만듭니다." : "."}`;
+  else if(cur.type === "norm") m = "document length table에서 |d|를 읽어 각 accumulator를 나눕니다. 긴 document가 유리해지는 것을 막습니다.";
+  else m = ranked.length ? "accumulator를 score 내림차순으로 sort해 ranked list를 만듭니다. accumulator가 없는 document는 한 번도 읽지 않았습니다." : "query term을 가진 document가 없어 결과가 비어 있습니다.";
+  $("#msg").innerHTML = m;
+
+  const normed = useNorm && steps.slice(0, k).some(s => s.type === "norm");
+  const mx = Math.max(0, ...Object.values(acc));
+  $("#acc").innerHTML = `<thead><tr><th>Document</th><th>${normed || !useNorm ? "accumulator (score)" : "accumulator (÷|d| 전)"}</th>${useNorm ? "<th>|d| table</th>" : ""}<th></th></tr></thead><tbody>${
+    docs.map((_, d) => { const has = acc[d] !== undefined;
+      return `<tr class="d${d} ${cur && cur.type === "post" && cur.doc === d ? "cur" : ""}"><td><span class="tag">d${d+1}</span></td><td class="${has ? "" : "nil"}">${has ? f3(acc[d]) : "없음"}</td>${useNorm ? `<td>${f3(norms[d])}</td>` : ""}<td class="barc"><div class="bar"><i style="width:${has && mx ? (acc[d] / mx * 100).toFixed(1) : 0}%"></i></div></td></tr>`; }).join("")}</tbody>`;
+
+  if(k < n) $("#rank").innerHTML = `<span class="none">마지막 단계에서 sort됩니다.</span>`;
+  else if(!ranked.length) $("#rank").innerHTML = `<span class="none">일치하는 document가 없습니다.</span>`;
+  else $("#rank").innerHTML = `<ol class="rank">${ranked.map((r, i) => {
+    const tie = (i > 0 && Math.abs(ranked[i-1].s - r.s) < 1e-12) || (i < ranked.length - 1 && Math.abs(ranked[i+1].s - r.s) < 1e-12);
+    return `<li class="d${r.doc}"><span class="rk">#${i+1}</span><span class="tag">d${r.doc+1}</span><span>${f3(r.s)}</span><span class="tx">${esc(docs[r.doc])}${tie ? '<span class="tie">tie</span>' : ""}</span></li>`; }).join("")}</ol>`;
+}
+
+function simStop(){ if(simTimer){ clearInterval(simTimer); simTimer = null; } }
+function simGo(k){ simStep = Math.max(0, Math.min(k, sim.steps.length)); renderSim(); applyHL(); }
+const simK = () => Math.min(simStep, sim.steps.length);
+$("#sim-first").addEventListener("click", () => { simStop(); simGo(0); });
+$("#sim-prev").addEventListener("click", () => { simStop(); simGo(simK() - 1); });
+$("#sim-next").addEventListener("click", () => { simStop(); simGo(simK() + 1); });
+$("#sim-end").addEventListener("click", () => { simStop(); simGo(Infinity); });
+$("#sim-play").addEventListener("click", () => {
+  simStop();
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches){ simGo(Infinity); return; }
+  simGo(simK() >= sim.steps.length ? 0 : simK());
+  simTimer = setInterval(() => { simGo(simK() + 1); if(simK() >= sim.steps.length) simStop(); }, 1100);
+});
+$("#query-input").addEventListener("input", e => { query = e.target.value; simStop(); simStep = Infinity; buildSim(); renderSim(); applyHL(); });
+function setNorm(v){
+  useNorm = v; $("#norm-on").setAttribute("aria-pressed", String(v)); $("#norm-off").setAttribute("aria-pressed", String(!v));
+  simStop(); simStep = Infinity; buildSim(); renderSim(); applyHL();
+}
+$("#norm-on").addEventListener("click", () => setNorm(true));
+$("#norm-off").addEventListener("click", () => setNorm(false));
+
+initDocs(); render();
+</script>
+</body>
+</html>
