@@ -1,0 +1,14 @@
+{
+  "sources": {
+    "01_ResNet18_CIFAR10.ipynb": "bfb21132b852bc2c0ffe5be08a7b323ccd6b97c96cc5821af44daaf0c0a22637",
+    "02_ViT_CIFAR10.ipynb": "8a864b903346bacd078816d6aa3384a8b650b355c70019bc160a69add4a88277",
+    "03_DETR.ipynb": "5de0246e5f4b4b42a55d4843c974dc708fccb90f1c1c55bff8717a330ed34a1b",
+    "04_Unet.ipynb": "00fb2106e31296c6a4385493c62dc2e8bfe8852ca45d12f79acee7efcb45ae2d"
+  },
+  "cutoffs_inclusive": {
+    "R": 15,
+    "V": 23,
+    "D": 30,
+    "U": 15
+  }
+}

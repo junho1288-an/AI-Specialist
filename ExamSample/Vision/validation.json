@@ -1,0 +1,519 @@
+[
+  {
+    "id": "R01",
+    "title": "학습·평가 전처리 구분",
+    "source": "01_ResNet18_CIFAR10.ipynb",
+    "source_cells": [
+      6
+    ],
+    "criteria": "데이터 구성·이미지 변환",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "T.RandomHorizontalFlip()",
+      "T.RandomHorizontalFlip(p=0.0)"
+    ]
+  },
+  {
+    "id": "R02",
+    "title": "DataLoader로 이미지·정답 묶기",
+    "source": "01_ResNet18_CIFAR10.ipynb",
+    "source_cells": [
+      6
+    ],
+    "criteria": "데이터 구성",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "shuffle=True",
+      "shuffle=False"
+    ]
+  },
+  {
+    "id": "R03",
+    "title": "역정규화와 broadcasting",
+    "source": "01_ResNet18_CIFAR10.ipynb",
+    "source_cells": [
+      7
+    ],
+    "criteria": "데이터 구성·이미지 변환",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "x * std + mean",
+      "x / std + mean"
+    ]
+  },
+  {
+    "id": "R04",
+    "title": "CIFAR용 ResNet stem과 분류기",
+    "source": "01_ResNet18_CIFAR10.ipynb",
+    "source_cells": [
+      9
+    ],
+    "criteria": "레이어 구성·동작",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "stride=1",
+      "stride=2"
+    ]
+  },
+  {
+    "id": "R05",
+    "title": "분류 loss와 학습할 파라미터 연결",
+    "source": "01_ResNet18_CIFAR10.ipynb",
+    "source_cells": [
+      13
+    ],
+    "criteria": "예측·정답을 학습으로 연결",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "label_smoothing=smoothing",
+      "label_smoothing=0.3"
+    ]
+  },
+  {
+    "id": "R06",
+    "title": "AMP 학습 한 배치",
+    "source": "01_ResNet18_CIFAR10.ipynb",
+    "source_cells": [
+      11
+    ],
+    "criteria": "예측·정답을 학습으로 연결",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "optimizer.zero_grad(set_to_none=True)",
+      "pass"
+    ]
+  },
+  {
+    "id": "R07",
+    "title": "평가 모드·정확도·샘플 가중 평균",
+    "source": "01_ResNet18_CIFAR10.ipynb",
+    "source_cells": [
+      11
+    ],
+    "criteria": "평가 Metric·학습/평가 구분",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "criterion(logits,labels).item() * bs",
+      "criterion(logits,labels).item()"
+    ]
+  },
+  {
+    "id": "R08",
+    "title": "추론 확률·클래스·confidence",
+    "source": "01_ResNet18_CIFAR10.ipynb",
+    "source_cells": [
+      15
+    ],
+    "criteria": "레이어 활용·평가 Metric",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "dim=1",
+      "dim=0"
+    ]
+  },
+  {
+    "id": "V01",
+    "title": "이미지 패치화와 선형 임베딩",
+    "source": "02_ViT_CIFAR10.ipynb",
+    "source_cells": [
+      11
+    ],
+    "criteria": "레이어 구성·데이터 구성",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "(p1 p2 c)",
+      "(c p1 p2)"
+    ]
+  },
+  {
+    "id": "V02",
+    "title": "CLS 토큰과 위치 임베딩",
+    "source": "02_ViT_CIFAR10.ipynb",
+    "source_cells": [
+      11
+    ],
+    "criteria": "레이어 구성·동작",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "pos_embedding[:,:(n+1)]",
+      "pos_embedding[:,1:(n+2)]"
+    ]
+  },
+  {
+    "id": "V03",
+    "title": "PreNorm: 먼저 LayerNorm",
+    "source": "02_ViT_CIFAR10.ipynb",
+    "source_cells": [
+      9
+    ],
+    "criteria": "레이어 구성·동작",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "fn(norm(x))",
+      "norm(fn(x))"
+    ]
+  },
+  {
+    "id": "V04",
+    "title": "FFN의 확장·활성화·축소",
+    "source": "02_ViT_CIFAR10.ipynb",
+    "source_cells": [
+      9
+    ],
+    "criteria": "레이어 구성·동작",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "nn.ReLU()",
+      "nn.GELU()"
+    ]
+  },
+  {
+    "id": "V05",
+    "title": "QKV 분리와 head 축 만들기",
+    "source": "02_ViT_CIFAR10.ipynb",
+    "source_cells": [
+      9
+    ],
+    "criteria": "레이어 구성·동작",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "chunk(3,dim=-1)",
+      "chunk(3,dim=1)"
+    ]
+  },
+  {
+    "id": "V06",
+    "title": "Scaled attention과 V 가중합",
+    "source": "02_ViT_CIFAR10.ipynb",
+    "source_cells": [
+      9
+    ],
+    "criteria": "레이어 구성·동작",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "dots.softmax(dim=-1)",
+      "dots.softmax(dim=-2)"
+    ]
+  },
+  {
+    "id": "V07",
+    "title": "head 합치기와 출력 투영",
+    "source": "02_ViT_CIFAR10.ipynb",
+    "source_cells": [
+      9
+    ],
+    "criteria": "레이어 구성·동작",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "rearrange(out,\"b h n d -> b n (h d)\")",
+      "out.reshape(out.shape[0],out.shape[2],-1)"
+    ]
+  },
+  {
+    "id": "V08",
+    "title": "두 residual 연결의 순서",
+    "source": "02_ViT_CIFAR10.ipynb",
+    "source_cells": [
+      9
+    ],
+    "criteria": "레이어 구성·동작",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "ff(x)+x",
+      "ff(x)"
+    ]
+  },
+  {
+    "id": "V09",
+    "title": "CLS/mean pooling과 클래스 logits",
+    "source": "02_ViT_CIFAR10.ipynb",
+    "source_cells": [
+      11
+    ],
+    "criteria": "레이어 구성·동작",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "x[:,0]",
+      "x[:,1]"
+    ]
+  },
+  {
+    "id": "V10",
+    "title": "log_softmax와 NLLLoss 학습",
+    "source": "02_ViT_CIFAR10.ipynb",
+    "source_cells": [
+      19
+    ],
+    "criteria": "예측·정답을 학습으로 연결",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "F.log_softmax",
+      "F.softmax"
+    ]
+  },
+  {
+    "id": "V11",
+    "title": "체크포인트에서 학습 상태 복원",
+    "source": "02_ViT_CIFAR10.ipynb",
+    "source_cells": [
+      15,
+      23
+    ],
+    "criteria": "학습에 필요한 작업·레이어 활용",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "optimizer.load_state_dict(ckpt[\"optimizer\"])",
+      "pass"
+    ]
+  },
+  {
+    "id": "D01",
+    "title": "DETR 입력 리사이즈·정규화·배치",
+    "source": "03_DETR.ipynb",
+    "source_cells": [
+      8,
+      18
+    ],
+    "criteria": "데이터 구성·이미지 변환",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "T.Resize(short_side)",
+      "T.Resize((short_side,short_side))"
+    ]
+  },
+  {
+    "id": "D02",
+    "title": "중심 박스를 픽셀 꼭짓점으로",
+    "source": "03_DETR.ipynb",
+    "source_cells": [
+      8
+    ],
+    "criteria": "데이터 변환·모델 출력 활용",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "[img_w,img_h,img_w,img_h]",
+      "[img_h,img_w,img_h,img_w]"
+    ]
+  },
+  {
+    "id": "D03",
+    "title": "no-object 제외와 confidence 필터",
+    "source": "03_DETR.ipynb",
+    "source_cells": [
+      18
+    ],
+    "criteria": "모델 출력 활용·데이터 구성",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "outputs['pred_logits'].softmax(-1)[0,:,:-1]",
+      "outputs['pred_logits'][0,:,:-1].softmax(-1)"
+    ]
+  },
+  {
+    "id": "D04",
+    "title": "forward hook으로 attention 추출",
+    "source": "03_DETR.ipynb",
+    "source_cells": [
+      22
+    ],
+    "criteria": "레이어 활용",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "saved.append(output[1])",
+      "saved.append(output[0])"
+    ]
+  },
+  {
+    "id": "D05",
+    "title": "attention 토큰축을 공간으로 복원",
+    "source": "03_DETR.ipynb",
+    "source_cells": [
+      24,
+      28,
+      30
+    ],
+    "criteria": "레이어 동작·출력 활용",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "spatial[qy,qx,:,:]",
+      "spatial[:,:,qy,qx]"
+    ]
+  },
+  {
+    "id": "U01",
+    "title": "이미지와 binary mask의 채널축",
+    "source": "04_Unet.ipynb",
+    "source_cells": [
+      5
+    ],
+    "criteria": "데이터 구성",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "axis=0",
+      "axis=-1"
+    ]
+  },
+  {
+    "id": "U02",
+    "title": "DoubleConv의 padding과 채널",
+    "source": "04_Unet.ipynb",
+    "source_cells": [
+      7
+    ],
+    "criteria": "레이어 구성·동작",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "padding=1",
+      "padding=0"
+    ]
+  },
+  {
+    "id": "U03",
+    "title": "Down: pooling 후 convolution",
+    "source": "04_Unet.ipynb",
+    "source_cells": [
+      7
+    ],
+    "criteria": "레이어 구성·동작",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "F.max_pool2d",
+      "F.avg_pool2d"
+    ]
+  },
+  {
+    "id": "U04",
+    "title": "두 업샘플링 방식",
+    "source": "04_Unet.ipynb",
+    "source_cells": [
+      7
+    ],
+    "criteria": "레이어 구성·동작",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "stride=2",
+      "stride=1"
+    ]
+  },
+  {
+    "id": "U05",
+    "title": "Up: 크기 정렬과 skip concat",
+    "source": "04_Unet.ipynb",
+    "source_cells": [
+      7
+    ],
+    "criteria": "레이어 구성·동작",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "torch.cat([x2,x1],dim=1)",
+      "torch.cat([x1,x2],dim=1)"
+    ]
+  },
+  {
+    "id": "U06",
+    "title": "Decoder에 올바른 skip 전달",
+    "source": "04_Unet.ipynb",
+    "source_cells": [
+      7
+    ],
+    "criteria": "레이어 구성·동작",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "model.up1(x5,x4)",
+      "model.up1(x5,x3)"
+    ]
+  },
+  {
+    "id": "U07",
+    "title": "픽셀 logits와 정답 mask로 학습",
+    "source": "04_Unet.ipynb",
+    "source_cells": [
+      9,
+      11
+    ],
+    "criteria": "예측·정답을 학습으로 연결",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "criterion(logits,masks)",
+      "criterion(logits.sigmoid(),masks)"
+    ]
+  },
+  {
+    "id": "U08",
+    "title": "확률을 binary segmentation mask로",
+    "source": "04_Unet.ipynb",
+    "source_cells": [
+      15
+    ],
+    "criteria": "모델 출력 활용·데이터 구성",
+    "answer_pass": true,
+    "blank_rejected": true,
+    "mutation_rejected": true,
+    "mutation": [
+      "probs > threshold",
+      "probs >= threshold"
+    ]
+  }
+]

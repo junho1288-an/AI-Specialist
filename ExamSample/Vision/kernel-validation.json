@@ -1,0 +1,21 @@
+{
+  "isolated": {
+    "vision-exercises.ipynb": 32,
+    "01-resnet-exercises.ipynb": 8,
+    "02-vit-exercises.ipynb": 11,
+    "03-detr-exercises.ipynb": 5,
+    "04-unet-exercises.ipynb": 8
+  },
+  "fresh_kernel": {
+    "blank": {
+      "pass_count": 0,
+      "fail_count": 32
+    },
+    "answer": {
+      "pass_count": 32,
+      "fail_count": 0
+    }
+  },
+  "semantic_mutations_rejected": 32,
+  "source_hashes_unchanged": true
+}
